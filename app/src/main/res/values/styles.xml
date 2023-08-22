@@ -12,9 +12,8 @@
 
         <!--Hint-->
         <item name="hintTextColor">@color/green</item>
-
-
     </style>
+
 
     <!--Button Primary-->
 <!--    <style name="CustomButtonStyle.Light" parent="Widget.MaterialComponents.Button">-->
