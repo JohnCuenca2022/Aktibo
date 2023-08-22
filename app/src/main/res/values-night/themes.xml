@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Aktibo" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+
+        <item name="android:windowBackground">@color/off_black</item>
+        <item name="colorPrimary">@color/white</item>
+
+        <!--Status Bar-->
+        <item name="colorPrimaryDark">@color/off_black</item>
+        <item name="android:windowLightStatusBar">false</item>
+
+        <!--Navigation Bar-->
+        <item name="android:navigationBarColor">@color/off_black</item>
+
+        <!--Text Input-->
+        <item name="textInputStyle">@style/CustomTextInputLayout.Dark</item>
+
+        <!--Button-->
+<!--        <item name="buttonStyle">@style/CustomButtonStyle.Dark</item>-->
+
+    </style>
+
+    <style name="SplashTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+        <!-- Other splash screen related attributes -->
+    </style>
+</resources>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--Text Input-->
+    <style name="CustomTextInputLayout.Dark" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/green</item>
+
+        <!--Box Border Radius-->
+        <item name="boxCornerRadiusTopStart">20dp</item>
+        <item name="boxCornerRadiusTopEnd">20dp</item>
+        <item name="boxCornerRadiusBottomStart">20dp</item>
+        <item name="boxCornerRadiusBottomEnd">20dp</item>
+
+        <!--Hint-->
+        <item name="hintTextColor">@color/green</item>
+    </style>
+
+    <!--Button Primary-->
+<!--    <style name="CustomButtonStyle.Dark" parent="Widget.MaterialComponents.Button">-->
+<!--        <item name="android:background">@color/black</item>-->
+<!--        <item name="android:textColor">@color/white</item>-->
+
+<!--        &lt;!&ndash;Box Border Radius&ndash;&gt;-->
+<!--        <item name="boxCornerRadiusTopStart">20dp</item>-->
+<!--        <item name="boxCornerRadiusTopEnd">20dp</item>-->
+<!--        <item name="boxCornerRadiusBottomStart">20dp</item>-->
+<!--        <item name="boxCornerRadiusBottomEnd">20dp</item>-->
+<!--    </style>-->
+
+<!--    &lt;!&ndash;Button Secondary&ndash;&gt;-->
+<!--    <style name="CustomButtonStyleSecondary.Dark" parent="CustomButtonStyle.Dark">-->
+<!--        <item name="android:background">@color/green</item>-->
+<!--        <item name="android:textColor">@color/white</item>-->
+<!--        &lt;!&ndash; Add more attributes as needed &ndash;&gt;-->
+<!--    </style>-->
+
+</resources>

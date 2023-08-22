@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "363113385770",
+    "project_id": "aktibo-2023",
+    "storage_bucket": "aktibo-2023.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:363113385770:android:18bceeb10cde2337b8d853",
+        "android_client_info": {
+          "package_name": "com.example.aktibo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "363113385770-degb1pull1he9t7akvd4r0n6t10o1b37.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZO_W-EX-AmK5emcIgIeEDNBYwd_PJMYY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "363113385770-degb1pull1he9t7akvd4r0n6t10o1b37.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
