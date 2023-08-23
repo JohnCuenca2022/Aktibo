@@ -24,12 +24,12 @@ class ExerciseActivity : AppCompatActivity() {
                 R.id.exercise -> return@OnNavigationItemSelectedListener true
                 R.id.home -> {
                     startActivity(Intent(applicationContext, HomeActivity::class.java))
-                    overridePendingTransition(0, 0)
+                    overridePendingTransition(R.anim.enter_from_left, R.anim.exit_out_right)
                     return@OnNavigationItemSelectedListener true
                 }
                 R.id.food -> {
                     startActivity(Intent(applicationContext, FoodActivity::class.java))
-                    overridePendingTransition(0, 0)
+                    overridePendingTransition(R.anim.enter_from_left, R.anim.exit_out_right)
                     return@OnNavigationItemSelectedListener true
                 }
             }

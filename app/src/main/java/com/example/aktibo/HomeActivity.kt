@@ -59,19 +59,17 @@ class HomeActivity : ComponentActivity() {
         bottomNavigationView.selectedItemId = R.id.home
 
         // Perform item selected listener
-
-        // Perform item selected listener
         bottomNavigationView.setOnNavigationItemSelectedListener(BottomNavigationView.OnNavigationItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.home -> return@OnNavigationItemSelectedListener true
                 R.id.food -> {
                     startActivity(Intent(applicationContext, FoodActivity::class.java))
-                    overridePendingTransition(0, 0)
+                    overridePendingTransition(R.anim.enter_from_right, R.anim.exit_out_left)
                     return@OnNavigationItemSelectedListener true
                 }
                 R.id.exercise -> {
                     startActivity(Intent(applicationContext, ExerciseActivity::class.java))
-                    overridePendingTransition(0, 0)
+                    overridePendingTransition(R.anim.enter_from_right, R.anim.exit_out_left)
                     return@OnNavigationItemSelectedListener true
                 }
             }
