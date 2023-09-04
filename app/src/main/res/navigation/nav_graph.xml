@@ -1,0 +1,36 @@
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/bottom_nav_graph"
+    app:startDestination="@id/home">
+
+    <fragment
+        android:id="@+id/home"
+        android:name="com.example.aktibo.HomeFragment"
+        android:label="Home"
+        tools:layout="@layout/fragment_home" />
+
+    <fragment
+        android:id="@+id/food"
+        android:name="com.example.aktibo.FoodFragment"
+        android:label="Food"
+        tools:layout="@layout/fragment_food" />
+
+    <fragment
+        android:id="@+id/exercise"
+        android:name="com.example.aktibo.ExerciseFragment"
+        android:label="Exercise"
+        tools:layout="@layout/fragment_exercise" />
+
+    <fragment
+        android:id="@+id/moments"
+        android:name="com.example.aktibo.MomentsFragment"
+        android:label="Moments"
+        tools:layout="@layout/fragment_moments" />
+
+    <fragment
+        android:id="@+id/notifications"
+        android:name="com.example.aktibo.NotificationsFragment"
+        android:label="Notifs"
+        tools:layout="@layout/fragment_notifications" />
+</navigation>
