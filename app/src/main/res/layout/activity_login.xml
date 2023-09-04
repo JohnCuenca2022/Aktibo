@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:theme="@style/Theme.Aktibo">
+
+    <ImageView
+        android:id="@+id/imageView_Aktibo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="120dp"
+        android:layout_marginBottom="120dp"
+        android:src="@drawable/aktibo_logo"
+        app:layout_constraintBottom_toTopOf="@+id/TextInputLayoutEmail"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/TextInputLayoutEmail"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="80dp"
+        app:endIconMode="clear_text"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/imageView_Aktibo">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/user_email"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Email"
+            android:inputType="textEmailAddress" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/TextInputLayoutPassword"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        app:endIconMode="password_toggle"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/TextInputLayoutEmail">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/user_password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Password"
+            android:inputType="textPassword" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_login"
+        android:layout_width="300dp"
+        android:layout_height="55dp"
+        android:layout_marginTop="60dp"
+        android:text="Login"
+        android:textColor="@color/white"
+        app:backgroundTint="@color/green"
+        app:cornerRadius="20dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/TextInputLayoutPassword"
+        app:textAllCaps="false" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_signup"
+        android:layout_width="300dp"
+        android:layout_height="55dp"
+        android:layout_marginTop="8dp"
+        android:text="Sign Up"
+        app:cornerRadius="20dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/button_login"
+        app:textAllCaps="false" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_google"
+        android:layout_width="300dp"
+        android:layout_height="55dp"
+        android:layout_marginTop="30dp"
+        android:text="Login with Google"
+        app:cornerRadius="20dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/button_signup"
+        app:textAllCaps="false" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

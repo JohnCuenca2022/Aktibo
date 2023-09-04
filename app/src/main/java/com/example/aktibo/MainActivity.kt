@@ -1,27 +1,47 @@
 package com.example.aktibo
 
 import android.content.Intent
-import android.content.res.Configuration
 import android.os.Bundle
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ImageView
-import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.FragmentTransaction
+import com.google.android.gms.dynamic.SupportFragmentWrapper
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 
-class MainActivity : ComponentActivity() {
+
+class MainActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
+
+    val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth: FirebaseAuth ->
+        val user: FirebaseUser? = firebaseAuth.currentUser
+        if (user == null) {
+            // If user is not logged-in, redirect to Login
+            val intent = Intent(this, LoginActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
+    };
+
+    lateinit var bottomNavigation: BottomNavigationView
 
     public override fun onStart() {
         super.onStart()
 
-        // Check if user is signed in (non-null) and update UI accordingly.
-        val currentUser = auth.currentUser
-        if (currentUser != null) {
-            val intent = Intent(this, HomeActivity::class.java)
-            startActivity(intent)
-            finish()
+        if (::auth.isInitialized){
+            auth.addAuthStateListener(authStateListener);
+
+            // Check if user is signed in (non-null) and update UI accordingly.
+            val currentUser = auth.currentUser
+            if (currentUser == null) {
+                // If user is not logged-in, redirect to Login
+                val intent = Intent(this, LoginActivity::class.java)
+                startActivity(intent)
+                finish()
+            }
         }
     }
 
@@ -29,42 +49,27 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        auth = FirebaseAuth.getInstance();
-
-        val loginButton = findViewById<Button>(R.id.button_login);
-
-        loginButton.setOnClickListener {
-            val userEmail = findViewById<EditText>(R.id.user_email);
-            val userPassword= findViewById<EditText>(R.id.user_password);
-
-            val email = userEmail.text.toString();
-            val password = userPassword.text.toString();
-
-            auth.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this) { task ->
-                    if (task.isSuccessful) {
-                        // Sign in success
-                        Toast.makeText(
-                            baseContext,
-                            "Login Success!",
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                        val user = auth.currentUser
-                        val intent = Intent(this, MainActivity::class.java)
-                        startActivity(intent)
-                        finish()
-                    } else {
-                        // If sign in fails, display a message to the user.
-                        Toast.makeText(
-                            baseContext,
-                            "Authentication failed.",
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                }
-
+        bottomNavigation = findViewById(R.id.bottom_navigation)
+        bottomNavigation.setOnItemSelectedListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.home -> replaceFragment(HomeFragment())
+                R.id.food -> replaceFragment(FoodFragment())
+                R.id.exercise -> replaceFragment(ExerciseFragment())
+                R.id.moments -> replaceFragment(MomentsFragment())
+                R.id.notifications -> replaceFragment(NotificationsFragment())
+            }
+            true
         }
+
+        // Set the default fragment
+        bottomNavigation.selectedItemId = R.id.home
+    }
+
+    private fun replaceFragment(fragment: Fragment) {
+        val transaction = supportFragmentManager.beginTransaction()
+        transaction.replace(R.id.fragment_container, fragment)
+        transaction.addToBackStack(null) // Optional: Add fragments to the back stack
+        transaction.commit()
     }
 
 }
-

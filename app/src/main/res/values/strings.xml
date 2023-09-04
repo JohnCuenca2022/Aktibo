@@ -4,5 +4,11 @@
     <string name="button">Button</string>
     <string name="secondary_color">Secondary color</string>
     <string name="email_icon">email icon</string>
+    <string name="notifications_feed">Notifications Feed</string>
+    <string name="exercise">Exercise</string>
+    <string name="moments">Moments</string>
+    <string name="meals_and_diet">Meals and Diet</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 
 </resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#63A91F" /> <!-- Header background color -->
+            <corners android:topLeftRadius="20dp" android:topRightRadius="20dp" />
+        </shape>
+    </item>
+    <item android:drawable="@drawable/notification_item_border" />
+</layer-list>
