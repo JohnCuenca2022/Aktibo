@@ -1,16 +1,23 @@
 package com.example.aktibo
 
+import android.content.ContentValues.TAG
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentManager
-import androidx.fragment.app.FragmentTransaction
-import com.google.android.gms.dynamic.SupportFragmentWrapper
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptionsExtension
+import com.google.android.gms.fitness.Fitness
+import com.google.android.gms.fitness.FitnessOptions
+import com.google.android.gms.fitness.data.DataType
+import com.google.android.gms.fitness.data.Field
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 
 
 class MainActivity : AppCompatActivity() {
@@ -43,6 +50,9 @@ class MainActivity : AppCompatActivity() {
                 finish()
             }
         }
+
+        checkAndCreateUserDocument()
+
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,6 +73,7 @@ class MainActivity : AppCompatActivity() {
 
         // Set the default fragment
         bottomNavigation.selectedItemId = R.id.home
+
     }
 
     private fun replaceFragment(fragment: Fragment) {
@@ -72,4 +83,91 @@ class MainActivity : AppCompatActivity() {
         transaction.commit()
     }
 
+    override fun onBackPressed() {
+        val fragmentManager = supportFragmentManager
+        val backStackEntryCount = fragmentManager.backStackEntryCount
+
+        // Check if the back stack is empty or the specific fragment is not visible.
+        if (backStackEntryCount == 0 ||
+            fragmentManager.findFragmentById(R.id.fragment_container) !is HomeFragment) {
+            // Replace the current fragment with the specific fragment.
+            loadFragment(HomeFragment())
+        } else {
+            // Close the app.
+            finish()
+        }
+    }
+
+    private fun loadFragment(fragment: Fragment) {
+        val transaction = supportFragmentManager.beginTransaction()
+        transaction.replace(R.id.fragment_container, fragment)
+        transaction.addToBackStack(null)
+        transaction.commit()
+        bottomNavigation.selectedItemId = R.id.home
+    }
+
+    fun checkAndCreateUserDocument() {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        val firestore = FirebaseFirestore.getInstance()
+        val usersCollection = firestore.collection("users")
+
+        currentUser?.let { user ->
+            val userId = user.uid
+
+            // Check if the document exists for the current user
+            usersCollection.document(userId).get()
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        val documentSnapshot = task.result
+
+                        // If the document does not exist, create it
+                        if (!documentSnapshot.exists()) {
+                            val data = hashMapOf(
+                                "notifications" to emptyList<String>(),
+                                "dateJoined" to FieldValue.serverTimestamp()
+                            )
+
+                            // Check if the user is a Google user
+                            if (user.providerData.any { it.providerId == GoogleAuthProvider.PROVIDER_ID }) {
+                                // If the user is signed in with Google, use their Google account name as the username
+                                val googleSignInAccount = GoogleSignIn.getLastSignedInAccount(this)
+                                val googleUserName = googleSignInAccount?.displayName
+
+                                if (!googleUserName.isNullOrEmpty()) {
+                                    data["username"] = googleUserName
+                                } else {
+                                    data["username"] = "AktiboUser" // Default username if Google name is unavailable
+                                }
+
+                                // Check if the Google user has a profile image
+                                val googleUserPhotoUrl = googleSignInAccount?.photoUrl
+                                if (googleUserPhotoUrl != null) {
+                                    data["userImage"] = googleUserPhotoUrl.toString()
+                                } else {
+                                    data["userImage"] = "" // Set userImage to an empty string
+                                }
+                            } else {
+                                // For non-Google users, set the username to "AktiboUser"
+                                data["username"] = "AktiboUser"
+                                data["userImage"] = "" // Set userImage to an empty string for non-Google users
+                            }
+
+                            // Create the document
+                            usersCollection.document(userId).set(data)
+                                .addOnSuccessListener {
+                                    // Document created successfully
+                                    // You can add any additional logic here
+                                }
+                                .addOnFailureListener { exception ->
+                                    // Handle the error
+                                    // You can add error handling here
+                                }
+                        }
+                    } else {
+                        // Handle the error
+                        // You can add error handling here
+                    }
+                }
+        }
+    }
 }

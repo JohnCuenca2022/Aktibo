@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
+<androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -7,22 +7,152 @@
     android:layout_height="match_parent"
     tools:context=".HomeFragment">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:fontFamily="@font/roboto_bold"
+        android:text="Your Week"
+        android:textColor="@color/primary"
+        android:textSize="20sp"
+        app:layout_constraintEnd_toStartOf="@+id/imageButton"
+        app:layout_constraintHorizontal_bias="0.067"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ImageButton
+        android:id="@+id/imageButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="@color/transparent"
+        android:src="@drawable/account"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scrollbars="none"
+        android:layout_marginTop="20dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/button_logout"
-            android:layout_width="300dp"
-            android:layout_height="55dp"
-            android:layout_marginTop="100dp"
-            android:text="Logout"
-            app:cornerRadius="20dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.498"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:textAllCaps="false" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-</FrameLayout>
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:id="@+id/progressBarSteps"
+                    style="@style/circularDeterminateProgressBarGreen"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:indicatorSize="140dp"
+                    android:layout_marginStart="16dp"
+                    android:max="1500"
+                    android:progress="45"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:id="@+id/progressBarCalories"
+                    style="@style/circularDeterminateProgressBarOrange"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:indicatorSize="140dp"
+                    android:layout_marginEnd="16dp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <TextView
+                    android:id="@+id/textViewSteps"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/roboto_bold"
+                    android:gravity="center"
+                    android:text="5191"
+                    android:textColor="@color/primary"
+                    android:textSize="30sp"
+                    app:layout_constraintBottom_toBottomOf="@+id/progressBarSteps"
+                    app:layout_constraintEnd_toEndOf="@+id/progressBarSteps"
+                    app:layout_constraintStart_toStartOf="@+id/progressBarSteps"
+                    app:layout_constraintTop_toTopOf="@+id/progressBarSteps" />
+
+                <ImageView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:src="@drawable/steps_icon"
+                    app:layout_constraintBottom_toBottomOf="@+id/progressBarSteps"
+                    app:layout_constraintEnd_toEndOf="@+id/progressBarSteps"
+                    app:layout_constraintHorizontal_bias="0.503"
+                    app:layout_constraintStart_toStartOf="@+id/progressBarSteps"
+                    app:layout_constraintTop_toBottomOf="@+id/textViewSteps"
+                    app:layout_constraintVertical_bias="0.275" />
+
+                <TextView
+                    android:id="@+id/textViewStepsCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:fontFamily="@font/roboto_bold"
+                    android:text="Steps"
+                    android:textColor="@color/primary"
+                    android:textSize="16sp"
+                    app:layout_constraintEnd_toEndOf="@+id/progressBarSteps"
+                    app:layout_constraintStart_toStartOf="@+id/progressBarSteps"
+                    app:layout_constraintTop_toBottomOf="@+id/progressBarSteps" />
+
+                <TextView
+                    android:id="@+id/textViewCaloriesCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/roboto_bold"
+                    android:text="982"
+                    android:gravity="center"
+                    android:textColor="@color/primary"
+                    android:textSize="30sp"
+                    app:layout_constraintBottom_toBottomOf="@+id/progressBarCalories"
+                    app:layout_constraintEnd_toEndOf="@+id/progressBarCalories"
+                    app:layout_constraintStart_toStartOf="@+id/progressBarCalories"
+                    app:layout_constraintTop_toTopOf="@+id/progressBarCalories" />
+
+                <ImageView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:src="@drawable/calories_icon"
+                    app:layout_constraintBottom_toBottomOf="@+id/progressBarCalories"
+                    app:layout_constraintEnd_toEndOf="@+id/progressBarCalories"
+                    app:layout_constraintHorizontal_bias="0.503"
+                    app:layout_constraintStart_toStartOf="@+id/progressBarCalories"
+                    app:layout_constraintTop_toBottomOf="@+id/textViewCaloriesCount"
+                    app:layout_constraintVertical_bias="0.275" />
+
+                <TextView
+                    android:id="@+id/textViewCalories"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:fontFamily="@font/roboto_bold"
+                    android:text="Calories Burned"
+                    android:textColor="@color/primary"
+                    android:textSize="16sp"
+                    app:layout_constraintEnd_toEndOf="@+id/progressBarCalories"
+                    app:layout_constraintStart_toStartOf="@+id/progressBarCalories"
+                    app:layout_constraintTop_toBottomOf="@+id/progressBarCalories" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </LinearLayout>
+    </ScrollView>
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

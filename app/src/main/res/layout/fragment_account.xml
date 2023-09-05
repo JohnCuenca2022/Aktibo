@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".AccountFragment">
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:fontFamily="@font/roboto_bold"
+        android:paddingStart="20dp"
+        android:text="@string/your_account"
+        android:textColor="@color/primary"
+        android:textSize="20sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardView"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:elevation="12dp"
+        app:cardCornerRadius="80dp"
+        android:layout_marginTop="20dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView">
+
+        <ImageView
+            android:id="@+id/userProfileImage"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:src="@drawable/placeholder_image"
+            android:scaleType="centerCrop"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+    </androidx.cardview.widget.CardView>
+
+
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/TextInputLayoutUsername"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        app:endIconMode="clear_text"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/cardView">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/username"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Username"
+            android:inputType="text" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_verify"
+        android:layout_width="300dp"
+        android:layout_height="55dp"
+        android:layout_marginTop="70dp"
+        android:text="Verify Your Email"
+        android:textColor="@color/white"
+        app:backgroundTint="@color/green"
+        app:cornerRadius="20dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/TextInputLayoutUsername"
+        app:textAllCaps="false" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_twoFA"
+        android:layout_width="300dp"
+        android:layout_height="55dp"
+        android:layout_marginTop="20dp"
+        android:text="Enable Two-Factor Auth"
+        android:textColor="@color/white"
+        app:backgroundTint="@color/green"
+        app:cornerRadius="20dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/button_verify"
+        app:textAllCaps="false" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/button_logout"
+        android:layout_width="300dp"
+        android:layout_height="55dp"
+        android:layout_marginBottom="80dp"
+        android:text="Logout"
+        app:cornerRadius="20dp"
+        app:strokeWidth="1dp"
+        android:textColor="@color/primary"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        style="@style/CustomMaterialButton"
+        app:textAllCaps="false" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -14,7 +14,15 @@
       },
       "oauth_client": [
         {
-          "client_id": "363113385770-degb1pull1he9t7akvd4r0n6t10o1b37.apps.googleusercontent.com",
+          "client_id": "363113385770-iisak7hrks889ajm2i7oa7raphsoif76.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.aktibo",
+            "certificate_hash": "dd8b477baf03e35546fe534ad1035ec51b32c37c"
+          }
+        },
+        {
+          "client_id": "363113385770-5epr0f4kpi628noiduvo6mdvskued8fo.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -27,7 +35,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "363113385770-degb1pull1he9t7akvd4r0n6t10o1b37.apps.googleusercontent.com",
+              "client_id": "363113385770-5epr0f4kpi628noiduvo6mdvskued8fo.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
