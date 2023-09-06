@@ -59,8 +59,7 @@
                     android:layout_height="wrap_content"
                     app:indicatorSize="140dp"
                     android:layout_marginStart="16dp"
-                    android:max="1500"
-                    android:progress="45"
+                    android:max="15000"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
 
@@ -80,7 +79,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/roboto_bold"
                     android:gravity="center"
-                    android:text="5191"
+                    android:text="0"
                     android:textColor="@color/primary"
                     android:textSize="30sp"
                     app:layout_constraintBottom_toBottomOf="@+id/progressBarSteps"

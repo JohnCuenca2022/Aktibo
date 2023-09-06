@@ -1,6 +1,7 @@
 package com.example.aktibo
 
 import android.Manifest
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.app.Activity.RESULT_OK
 import android.content.ContentValues
@@ -182,10 +183,36 @@ class HomeFragment : Fragment(), Backable {
                 val textViewSteps = view?.findViewById<TextView>(R.id.textViewSteps)
                 val progressBarSteps = view?.findViewById<CircularProgressIndicator>(R.id.progressBarSteps)
                 if (progressBarSteps != null) {
-                    progressBarSteps.setProgress(totalSteps)
+                    //progressBarSteps.setProgress(totalSteps)
+
+                    val targetProgress = totalSteps // The target progress value
+
+                    // Create a ValueAnimator
+                    val animator = ValueAnimator.ofInt(0, targetProgress)
+                    animator.duration = 1000 // Animation duration in milliseconds
+
+                    animator.addUpdateListener { animation ->
+                        val animatedValue = animation.animatedValue as Int
+                        progressBarSteps.progress = animatedValue
+                    }
+
+                    animator.start()
                 }
                 if (textViewSteps != null) {
-                    textViewSteps.setText("$totalSteps")
+                    //textViewSteps.setText("$totalSteps")
+                    val targetValue = totalSteps // The number you want to count up to
+
+                    // Create a ValueAnimator
+                    val animator = ValueAnimator.ofInt(0, targetValue)
+                    animator.duration = 1000 // Animation duration in milliseconds
+
+                    animator.addUpdateListener { animation ->
+                        val animatedValue = animation.animatedValue as Int
+                        textViewSteps.text = animatedValue.toString()
+                    }
+
+                    animator.start()
+
                 }
             }
 
