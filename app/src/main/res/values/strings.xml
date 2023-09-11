@@ -12,5 +12,6 @@
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="your_account">Your Account</string>
     <string name="your_web_client_id">363113385770-5epr0f4kpi628noiduvo6mdvskued8fo.apps.googleusercontent.com</string>
+    <string name="exercise_goal_message">You have been consistent on your exercise goal of <font color='#63A91F'>1-2 exercises</font> per week</string>
 
 </resources>

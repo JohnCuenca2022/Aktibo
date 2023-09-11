@@ -51,4 +51,9 @@
         <item name="trackThickness">12dp</item>
     </style>
 
+    <style name="CustomCalendarView">
+        <item name="android:background">@drawable/custom_calendar_background</item>
+    </style>
+
+
 </resources>
