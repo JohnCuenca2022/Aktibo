@@ -5,28 +5,14 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.LinearLayout
 
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
-
-/**
- * A simple [Fragment] subclass.
- * Use the [MomentsFragment.newInstance] factory method to
- * create an instance of this fragment.
- */
 class MomentsFragment : Fragment() {
-    // TODO: Rename and change types of parameters
-    private var param1: String? = null
-    private var param2: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
-        }
+
     }
 
     override fun onCreateView(
@@ -37,23 +23,34 @@ class MomentsFragment : Fragment() {
         return inflater.inflate(R.layout.fragment_moments, container, false)
     }
 
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment MomentsFragment.
-         */
-        // TODO: Rename and change types and number of parameters
-        @JvmStatic
-        fun newInstance(param1: String, param2: String) =
-            MomentsFragment().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
-                }
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        val linearLayout = view.findViewById<LinearLayout>(R.id.scrollContainer)
+        val inflater = layoutInflater
+
+
+        for (i in 0 until 5) {
+            val itemLayout = inflater.inflate(R.layout.moments_item, null)
+
+            // Find and update the UI elements in the item layout
+//            val textView = itemLayout.findViewById<TextView>(R.id.textView)
+//            textView.text = "Item $i"
+
+            val marginLayoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            marginLayoutParams.setMargins(0, 0, 0, resources.getDimensionPixelSize(R.dimen.bottom_margin)) // Adjust the margin as needed
+            itemLayout.layoutParams = marginLayoutParams
+
+            val imageView = itemLayout.findViewById<ImageView>(R.id.momentImg)
+            if (i%2 == 0) {
+                imageView.visibility = ImageView.GONE // Set visibility to "gone"
             }
+
+            // Add the item layout to the LinearLayout
+            linearLayout.addView(itemLayout)
+        }
     }
 }

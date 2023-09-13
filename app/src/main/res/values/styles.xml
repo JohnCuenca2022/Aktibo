@@ -27,6 +27,14 @@
         <item name="trackThickness">12dp</item>
     </style>
 
+    <style name="circularDeterminateProgressBarGreenSmall" parent="Widget.MaterialComponents.CircularProgressIndicator">
+        <item name="android:indeterminateOnly">false</item>
+        <item name="trackCornerRadius">20dp</item>
+        <item name="indicatorColor">@color/green</item>
+        <item name="trackColor">#3363A91F</item>
+        <item name="trackThickness">10dp</item>
+    </style>
+
     <style name="circularDeterminateProgressBarOrange" parent="Widget.MaterialComponents.CircularProgressIndicator">
         <item name="android:indeterminateOnly">false</item>
         <item name="trackCornerRadius">20dp</item>
@@ -34,5 +42,18 @@
         <item name="trackColor">#33FF7F11</item>
         <item name="trackThickness">12dp</item>
     </style>
+
+    <style name="circularDeterminateProgressBarYellow" parent="Widget.MaterialComponents.CircularProgressIndicator">
+        <item name="android:indeterminateOnly">false</item>
+        <item name="trackCornerRadius">20dp</item>
+        <item name="indicatorColor">@color/yellow</item>
+        <item name="trackColor">#33FF7F11</item>
+        <item name="trackThickness">12dp</item>
+    </style>
+
+    <style name="CustomCalendarView">
+        <item name="android:background">@drawable/custom_calendar_background</item>
+    </style>
+
 
 </resources>

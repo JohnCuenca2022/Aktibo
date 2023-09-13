@@ -53,38 +53,38 @@ class LoginActivity : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance();
 
-        val loginButton = findViewById<Button>(R.id.button_login);
-
-        loginButton.setOnClickListener {
-            val email = findViewById<EditText>(R.id.user_email).text.toString();
-            val password = findViewById<EditText>(R.id.user_password).text.toString();
-
-            auth.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this) { task ->
-                    if (task.isSuccessful) {
-                        // Sign in success
-                        Toast.makeText(
-                            baseContext,
-                            "Login Success!",
-                            Toast.LENGTH_SHORT,
-                        ).show()
-
-                        //Redirect user to Main Activity
-                        val intent = Intent(this, MainActivity::class.java)
-                        startActivity(intent)
-                        finish()
-
-                    } else {
-                        // If sign in fails, display a message to the user.
-                        Toast.makeText(
-                            baseContext,
-                            "Authentication failed.",
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                }
-
-        }
+//        val loginButton = findViewById<Button>(R.id.button_login);
+//
+//        loginButton.setOnClickListener {
+//            val email = findViewById<EditText>(R.id.user_email).text.toString();
+//            val password = findViewById<EditText>(R.id.user_password).text.toString();
+//
+//            auth.signInWithEmailAndPassword(email, password)
+//                .addOnCompleteListener(this) { task ->
+//                    if (task.isSuccessful) {
+//                        // Sign in success
+//                        Toast.makeText(
+//                            baseContext,
+//                            "Login Success!",
+//                            Toast.LENGTH_SHORT,
+//                        ).show()
+//
+//                        //Redirect user to Main Activity
+//                        val intent = Intent(this, MainActivity::class.java)
+//                        startActivity(intent)
+//                        finish()
+//
+//                    } else {
+//                        // If sign in fails, display a message to the user.
+//                        Toast.makeText(
+//                            baseContext,
+//                            "Authentication failed.",
+//                            Toast.LENGTH_SHORT,
+//                        ).show()
+//                    }
+//                }
+//
+//        }
 
         val googleButton = findViewById<Button>(R.id.button_google)
         googleButton.setOnClickListener{
