@@ -2,44 +2,45 @@ package com.example.aktibo
 
 import android.Manifest
 import android.app.Activity
-import android.app.Activity.RESULT_OK
-import android.content.ContentValues
 import android.content.ContentValues.TAG
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
+import android.icu.util.Calendar
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.ImageButton
-import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+import com.github.mikephil.charting.charts.BarChart
+import com.github.mikephil.charting.charts.LineChart
+import com.github.mikephil.charting.components.Description
+import com.github.mikephil.charting.data.BarData
+import com.github.mikephil.charting.data.BarDataSet
+import com.github.mikephil.charting.data.BarEntry
+import com.github.mikephil.charting.formatter.ValueFormatter
 import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptionsExtension
-import com.google.android.gms.common.api.GoogleApiClient
-import com.google.android.gms.common.api.Scope
 import com.google.android.gms.fitness.Fitness
 import com.google.android.gms.fitness.FitnessOptions
-import com.google.android.gms.fitness.data.DataSet
 import com.google.android.gms.fitness.data.DataSource
 import com.google.android.gms.fitness.data.DataType
 import com.google.android.gms.fitness.data.Field
 import com.google.android.gms.fitness.request.DataReadRequest
-import com.google.android.gms.fitness.request.OnDataPointListener
-import com.google.android.gms.tasks.Tasks
 import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.firebase.auth.FirebaseAuth
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.util.Date
 import java.util.concurrent.TimeUnit
+
 
 interface Backable {
     fun onBackPressed(): Boolean
@@ -53,6 +54,7 @@ class HomeFragment : Fragment(), Backable {
         .addDataType(DataType.AGGREGATE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
         .addDataType(DataType.AGGREGATE_ACTIVITY_SUMMARY, FitnessOptions.ACCESS_READ)
         .build()
+    private lateinit var barChart: BarChart
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreateView(
@@ -77,7 +79,7 @@ class HomeFragment : Fragment(), Backable {
             fragmentTransaction.commit()
         }
 
-
+        barChart = view.findViewById(R.id.barChart)
 
 
         return view
@@ -98,6 +100,12 @@ class HomeFragment : Fragment(), Backable {
         } else {
             accessGoogleFit()
         }
+
+        // Example data (replace this with your own data)
+        val inputData = intArrayOf(25, 123, 400, 87)
+
+        // Create a function to update the chart with the provided data
+//        updateChart(inputData)
 
     }
 
@@ -137,6 +145,7 @@ class HomeFragment : Fragment(), Backable {
                 Log.i(TAG, "OnSuccess()")
                 checkAndRequestActivityRecognitionPermission()
                 readSteps()
+                getDailySteps()
             }
             .addOnFailureListener { e -> Log.d(TAG, "OnFailure()", e) }
     }
@@ -188,7 +197,99 @@ class HomeFragment : Fragment(), Backable {
                     textViewSteps.setText("$totalSteps")
                 }
             }
+    }
 
+    private fun getDailySteps(){
+        val calendar = Calendar.getInstance()
+        calendar.time = Date()
+        val endTime = calendar.timeInMillis // End time is the current date/time
+        calendar.add(Calendar.DAY_OF_YEAR, -7) // Go back 7 days
+        val startTime = calendar.timeInMillis
+
+        val googleSignInAccount = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
+
+        val readRequest = DataReadRequest.Builder()
+            .aggregate(DataType.TYPE_STEP_COUNT_DELTA, DataType.AGGREGATE_STEP_COUNT_DELTA)
+            .bucketByTime(1, TimeUnit.DAYS)
+            .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+            .build()
+
+        val fitnessDataClient = Fitness.getHistoryClient(requireActivity(), googleSignInAccount)
+
+        val dataReadResultTask = fitnessDataClient.readData(readRequest)
+        dataReadResultTask.addOnSuccessListener { dataReadResponse ->
+            if (dataReadResponse.buckets.isNotEmpty()) {
+                val intArray = IntArray(7)
+                var index = 0
+                for (bucket in dataReadResponse.buckets) {
+                    val dataSet = bucket.dataSets.firstOrNull { it.dataType == DataType.TYPE_STEP_COUNT_DELTA }
+                    if (dataSet != null) {
+
+                        for (dataPoint in dataSet.dataPoints) {
+                            val timestamp = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
+                            val stepCount = dataPoint.getValue(Field.FIELD_STEPS).asInt()
+
+                            intArray[index] = stepCount
+                            index += 1
+                            Log.i(TAG,Date(timestamp).toString())
+                            Log.i(TAG,stepCount.toString())
+
+                        }
+                        updateChart(intArray)
+                    }
+                }
+            }
+        }.addOnFailureListener { e ->
+            // Handle the error
+        }
+    }
+
+    private fun updateChart(data: IntArray) {
+        val entries = ArrayList<BarEntry>()
+
+        // Create data entries for the bar chart from the input data
+        for ((index, value) in data.withIndex()) {
+            entries.add(BarEntry(index.toFloat() + 1, value.toFloat()))
+        }
+
+        val dataSet = BarDataSet(entries, "Bar Chart Example")
+        dataSet.color = Color.BLUE
+        // Set a custom bar width (default is 0.85f)
+        val leftYAxis = barChart.axisLeft
+        leftYAxis.granularity = 100f
+        leftYAxis.labelCount = 5
+        leftYAxis.valueFormatter = object : ValueFormatter() {
+            override fun getFormattedValue(value: Float): String {
+                return value.toInt().toString()
+            }
+        }
+
+        // Get the X-axis and Y-axis of the chart
+        val xAxis = barChart.xAxis
+        val yAxisLeft = barChart.axisLeft
+
+// Disable gridlines for both X and Y axes
+        xAxis.setDrawGridLines(false)
+        yAxisLeft.setDrawGridLines(false)
+
+        xAxis.textColor = Color.RED
+
+
+
+
+        yAxisLeft.textColor = Color.BLUE
+        dataSet.valueTextColor = Color.GREEN
+        val barData = BarData(dataSet)
+
+
+
+        val description = Description()
+        description.text = "My Bar Chart"
+        description.textColor = Color.MAGENTA
+        barChart.description = description
+
+        barChart.data = barData
+        barChart.invalidate()
     }
 
     override fun onBackPressed(): Boolean {
