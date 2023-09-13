@@ -1,6 +1,7 @@
 package com.example.aktibo
 
 import android.Manifest
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.ContentValues.TAG
 import android.content.Intent
@@ -20,7 +21,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.github.mikephil.charting.charts.BarChart
-import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.Description
 import com.github.mikephil.charting.data.BarData
 import com.github.mikephil.charting.data.BarDataSet
@@ -53,6 +53,7 @@ class HomeFragment : Fragment(), Backable {
         .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
         .addDataType(DataType.AGGREGATE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
         .addDataType(DataType.AGGREGATE_ACTIVITY_SUMMARY, FitnessOptions.ACCESS_READ)
+        .addDataType(DataType.TYPE_CALORIES_EXPENDED, FitnessOptions.ACCESS_READ)
         .build()
     private lateinit var barChart: BarChart
 
@@ -188,14 +189,7 @@ class HomeFragment : Fragment(), Backable {
                     .flatMap { it.dataPoints }
                     .sumBy { it.getValue(Field.FIELD_STEPS).asInt() }
                 Log.i(TAG, "Total steps: $totalSteps")
-                val textViewSteps = view?.findViewById<TextView>(R.id.textViewSteps)
-                val progressBarSteps = view?.findViewById<CircularProgressIndicator>(R.id.progressBarSteps)
-                if (progressBarSteps != null) {
-                    progressBarSteps.setProgress(totalSteps)
-                }
-                if (textViewSteps != null) {
-                    textViewSteps.setText("$totalSteps")
-                }
+
             }
     }
 
@@ -236,6 +230,7 @@ class HomeFragment : Fragment(), Backable {
 
                         }
                         updateChart(intArray)
+                        // showCaloriesBurned()
                     }
                 }
             }
@@ -290,6 +285,49 @@ class HomeFragment : Fragment(), Backable {
 
         barChart.data = barData
         barChart.invalidate()
+
+        // circular progress bar
+        val totalSteps = data[0]
+        val textViewSteps = view?.findViewById<TextView>(R.id.textViewSteps)
+        val progressBarSteps = view?.findViewById<CircularProgressIndicator>(R.id.progressBarSteps)
+        if (progressBarSteps != null) {
+            // progressBarSteps.setProgress(totalSteps)
+
+            // Create a ValueAnimator
+            val animator = ValueAnimator.ofInt(0, totalSteps)
+            animator.duration = 1000 // Animation duration in milliseconds
+
+            animator.addUpdateListener { animation ->
+                val animatedValue = animation.animatedValue as Int
+                progressBarSteps.progress = animatedValue
+            }
+
+            animator.start()
+        }
+        if (textViewSteps != null) {
+            textViewSteps.setText("$totalSteps")
+
+            // Create a ValueAnimator
+            val animator = ValueAnimator.ofInt(0, totalSteps)
+            animator.duration = 1000 // Animation duration in milliseconds
+
+            animator.addUpdateListener { animation ->
+                val animatedValue = animation.animatedValue as Int
+                textViewSteps.text = animatedValue.toString()
+            }
+
+            animator.start()
+        }
+    }
+
+    private fun showCaloriesBurnedFromSteps(stepCount: Int){
+        // Constants for the conversion
+        val STEPS_PER_100_CALORIES = 2000
+        val CALORIES_BURNED_PER_STEP = 100f / STEPS_PER_100_CALORIES
+
+        // Estimate calories burned
+        val caloriesBurned = stepCount * CALORIES_BURNED_PER_STEP
+
     }
 
     override fun onBackPressed(): Boolean {
