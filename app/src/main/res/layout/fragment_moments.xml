@@ -23,6 +23,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <ScrollView
+        android:id="@+id/scrollView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -33,13 +34,42 @@
         app:layout_constraintTop_toBottomOf="@+id/textViewTitle">
 
         <LinearLayout
-            android:id="@+id/scrollContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
+            <!-- Existing content goes here -->
+            <LinearLayout
+                android:id="@+id/scrollContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <!-- Existing content goes here -->
+            </LinearLayout>
+
+            <!-- Loading ProgressBar -->
+            <ProgressBar
+                android:id="@+id/progressBar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:visibility="gone" />
 
         </LinearLayout>
     </ScrollView>
+
+    <ImageButton
+        android:id="@+id/addNewMomentButton"
+        android:layout_width="65dp"
+        android:layout_height="65dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="30dp"
+        android:src="@drawable/add_moment_button"
+        android:scaleType="centerCrop"
+        android:background="@color/transparent"
+        android:contentDescription="Image Button"
+        android:layout_gravity="center" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

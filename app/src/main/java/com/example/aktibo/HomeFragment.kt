@@ -6,6 +6,7 @@ import android.content.ContentValues.TAG
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.icu.text.SimpleDateFormat
 import android.icu.util.Calendar
 import android.os.Build
 import android.os.Bundle
@@ -19,9 +20,10 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.github.mikephil.charting.animation.Easing
 import com.github.mikephil.charting.charts.BarChart
-import com.github.mikephil.charting.charts.LineChart
-import com.github.mikephil.charting.components.Description
+import com.github.mikephil.charting.components.AxisBase
+import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.BarData
 import com.github.mikephil.charting.data.BarDataSet
 import com.github.mikephil.charting.data.BarEntry
@@ -39,6 +41,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 
@@ -80,7 +83,6 @@ class HomeFragment : Fragment(), Backable {
         }
 
         barChart = view.findViewById(R.id.barChart)
-
 
         return view
     }
@@ -220,22 +222,25 @@ class HomeFragment : Fragment(), Backable {
         dataReadResultTask.addOnSuccessListener { dataReadResponse ->
             if (dataReadResponse.buckets.isNotEmpty()) {
                 val intArray = IntArray(7)
+                val dayArray = arrayOf("","","","","","","")
                 var index = 0
                 for (bucket in dataReadResponse.buckets) {
                     val dataSet = bucket.dataSets.firstOrNull { it.dataType == DataType.TYPE_STEP_COUNT_DELTA }
                     if (dataSet != null) {
-
                         for (dataPoint in dataSet.dataPoints) {
                             val timestamp = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
                             val stepCount = dataPoint.getValue(Field.FIELD_STEPS).asInt()
+                            val dateFormat = SimpleDateFormat("E", Locale.getDefault())
+                            val day = dateFormat.format(Date(timestamp)).toString()
 
                             intArray[index] = stepCount
+                            dayArray[index] = day
                             index += 1
                             Log.i(TAG,Date(timestamp).toString())
                             Log.i(TAG,stepCount.toString())
 
                         }
-                        updateChart(intArray)
+                        updateChart(intArray, dayArray)
                     }
                 }
             }
@@ -244,52 +249,98 @@ class HomeFragment : Fragment(), Backable {
         }
     }
 
-    private fun updateChart(data: IntArray) {
+    private fun updateChart(data: IntArray, days: Array<String>) {
         val entries = ArrayList<BarEntry>()
 
         // Create data entries for the bar chart from the input data
         for ((index, value) in data.withIndex()) {
-            entries.add(BarEntry(index.toFloat() + 1, value.toFloat()))
+            entries.add(BarEntry(index.toFloat(), value.toFloat()))
         }
 
-        val dataSet = BarDataSet(entries, "Bar Chart Example")
-        dataSet.color = Color.BLUE
-        // Set a custom bar width (default is 0.85f)
-        val leftYAxis = barChart.axisLeft
-        leftYAxis.granularity = 100f
-        leftYAxis.labelCount = 5
-        leftYAxis.valueFormatter = object : ValueFormatter() {
-            override fun getFormattedValue(value: Float): String {
-                return value.toInt().toString()
-            }
-        }
+        val set = BarDataSet(entries, "BarDataSet")
+        set.color = Color.rgb(99,169,31)
 
-        // Get the X-axis and Y-axis of the chart
+        val dataSet = BarData(set)
+        dataSet.barWidth = 0.9f; // set custom bar width
+        dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
+
+        // disable dragging/zooming
+        barChart.setTouchEnabled(false)
+
+        //axis styling
         val xAxis = barChart.xAxis
         val yAxisLeft = barChart.axisLeft
+        val yAxisRight = barChart.axisRight
+
+        //disable gridlines
+        xAxis.setDrawGridLines(false)
+        // yAxisLeft.setDrawGridLines(false)
+        yAxisRight.setDrawGridLines(false)
+
+        //text color
+        yAxisLeft.textColor = ContextCompat.getColor(requireContext(), R.color.primary)
+        xAxis.textColor = ContextCompat.getColor(requireContext(), R.color.primary)
+        xAxis.position = XAxis.XAxisPosition.BOTTOM
+        yAxisRight.setDrawLabels(false)
+
+        // x-axis values
+        val formatter: ValueFormatter = object : ValueFormatter() {
+            override fun getAxisLabel(value: Float, axis: AxisBase?): String {
+                return days.getOrNull(value.toInt()) ?: value.toString()
+            }
+        }
+        xAxis.granularity = 1f
+        xAxis.valueFormatter = formatter
+
+        //Disable Legend
+        val legend = barChart.getLegend()
+        legend.isEnabled = false
+
+        //Disable Description
+        val description = barChart.getDescription()
+        description.isEnabled = false
+
+        //Animation
+        barChart.animateY(500, Easing.EaseInSine);
+        barChart.animateX(500, Easing.EaseInSine);
+
+        // setting the data
+        barChart.data = dataSet
+        barChart.setFitBars(true)
+
+        barChart.invalidate()
+
+        //val dataSet = BarDataSet(entries, null)
+        //dataSet.color = Color.rgb(99,169,31)
+
+        // Set a custom bar width (default is 0.85f)
+//        val leftYAxis = barChart.axisLeft
+//        leftYAxis.granularity = 100f
+//        leftYAxis.labelCount = 5
+//        leftYAxis.valueFormatter = object : ValueFormatter() {
+//            override fun getFormattedValue(value: Float): String {
+//                return value.toInt().toString()
+//            }
+//        }
+
+        // Get the X-axis and Y-axis of the chart
+//        val xAxis = barChart.xAxis
+//        val yAxisLeft = barChart.axisLeft
 
 // Disable gridlines for both X and Y axes
-        xAxis.setDrawGridLines(false)
-        yAxisLeft.setDrawGridLines(false)
-
-        xAxis.textColor = Color.RED
-
-
-
-
-        yAxisLeft.textColor = Color.BLUE
-        dataSet.valueTextColor = Color.GREEN
-        val barData = BarData(dataSet)
+//        xAxis.setDrawGridLines(false)
+//        yAxisLeft.setDrawGridLines(false)
+//
+//        xAxis.textColor = Color.RED
+//
+//
+//
+//        yAxisLeft.textColor = Color.BLUE
+//        dataSet.valueTextColor = Color.GREEN
 
 
 
-        val description = Description()
-        description.text = "My Bar Chart"
-        description.textColor = Color.MAGENTA
-        barChart.description = description
 
-        barChart.data = barData
-        barChart.invalidate()
     }
 
     override fun onBackPressed(): Boolean {

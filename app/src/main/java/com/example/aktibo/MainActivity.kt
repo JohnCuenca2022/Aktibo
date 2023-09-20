@@ -38,7 +38,7 @@ class MainActivity : AppCompatActivity() {
     public override fun onStart() {
         super.onStart()
 
-        if (::auth.isInitialized){
+        if (::auth.isInitialized) {
             auth.addAuthStateListener(authStateListener);
 
             // Check if user is signed in (non-null) and update UI accordingly.
@@ -52,7 +52,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         checkAndCreateUserDocument()
-
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,11 +86,31 @@ class MainActivity : AppCompatActivity() {
         val fragmentManager = supportFragmentManager
         val backStackEntryCount = fragmentManager.backStackEntryCount
 
+        val currentFragment = fragmentManager.findFragmentById(R.id.fragment_container)
+
         // Check if the back stack is empty or the specific fragment is not visible.
+
+        if (currentFragment is NewMomentFragment) {
+            val fragmentManager = supportFragmentManager
+            val fragmentTransaction = fragmentManager.beginTransaction()
+            fragmentTransaction.setCustomAnimations(
+                R.anim.slide_in_left, // Enter animation
+                R.anim.slide_out_right, // Exit animation
+                R.anim.slide_in_left, // Pop enter animation (for back navigation)
+                R.anim.slide_out_right // Pop exit animation (for back navigation)
+            )
+            fragmentTransaction.replace(R.id.fragment_container, MomentsFragment())
+            fragmentTransaction.commit()
+
+            return
+        }
+
         if (backStackEntryCount == 0 ||
-            fragmentManager.findFragmentById(R.id.fragment_container) !is HomeFragment) {
+            fragmentManager.findFragmentById(R.id.fragment_container) !is HomeFragment
+        ) {
             // Replace the current fragment with the specific fragment.
             loadFragment(HomeFragment())
+            return
         } else {
             // Close the app.
             finish()
@@ -136,7 +155,8 @@ class MainActivity : AppCompatActivity() {
                                 if (!googleUserName.isNullOrEmpty()) {
                                     data["username"] = googleUserName
                                 } else {
-                                    data["username"] = "AktiboUser" // Default username if Google name is unavailable
+                                    data["username"] =
+                                        "AktiboUser" // Default username if Google name is unavailable
                                 }
 
                                 // Check if the Google user has a profile image
@@ -149,7 +169,8 @@ class MainActivity : AppCompatActivity() {
                             } else {
                                 // For non-Google users, set the username to "AktiboUser"
                                 data["username"] = "AktiboUser"
-                                data["userImage"] = "" // Set userImage to an empty string for non-Google users
+                                data["userImage"] =
+                                    "" // Set userImage to an empty string for non-Google users
                             }
 
                             // Create the document
