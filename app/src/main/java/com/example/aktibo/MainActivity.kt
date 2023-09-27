@@ -3,9 +3,14 @@ package com.example.aktibo
 import android.content.ContentValues.TAG
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import android.view.animation.AnimationUtils
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptionsExtension
 import com.google.android.gms.fitness.Fitness
@@ -22,6 +27,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 
 class MainActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
+    lateinit var bottomNavigation: BottomNavigationView
+    private var doubleBackToExitPressedOnce = false
 
     val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth: FirebaseAuth ->
         val user: FirebaseUser? = firebaseAuth.currentUser
@@ -32,8 +39,6 @@ class MainActivity : AppCompatActivity() {
             finish()
         }
     };
-
-    lateinit var bottomNavigation: BottomNavigationView
 
     public override fun onStart() {
         super.onStart()
@@ -76,53 +81,46 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun replaceFragment(fragment: Fragment) {
-        val transaction = supportFragmentManager.beginTransaction()
+        val fragmentManager = supportFragmentManager
+
+        val transaction = fragmentManager.beginTransaction()
         transaction.replace(R.id.fragment_container, fragment)
-        transaction.addToBackStack(null) // Optional: Add fragments to the back stack
+        transaction.addToBackStack(null)
         transaction.commit()
     }
 
     override fun onBackPressed() {
         val fragmentManager = supportFragmentManager
-        val backStackEntryCount = fragmentManager.backStackEntryCount
 
+        // if current fragment is one of the main fragments except home, return home
         val currentFragment = fragmentManager.findFragmentById(R.id.fragment_container)
+        if (currentFragment is FoodFragment ||
+            currentFragment is ExerciseFragment ||
+            currentFragment is MomentsFragment ||
+            currentFragment is NotificationsFragment) {
 
-        // Check if the back stack is empty or the specific fragment is not visible.
-
-        if (currentFragment is NewMomentFragment) {
-            val fragmentManager = supportFragmentManager
-            val fragmentTransaction = fragmentManager.beginTransaction()
-            fragmentTransaction.setCustomAnimations(
-                R.anim.slide_in_left, // Enter animation
-                R.anim.slide_out_right, // Exit animation
-                R.anim.slide_in_left, // Pop enter animation (for back navigation)
-                R.anim.slide_out_right // Pop exit animation (for back navigation)
-            )
-            fragmentTransaction.replace(R.id.fragment_container, MomentsFragment())
-            fragmentTransaction.commit()
+            replaceFragment(HomeFragment())
+            bottomNavigation.selectedItemId = R.id.home
 
             return
         }
 
-        if (backStackEntryCount == 0 ||
-            fragmentManager.findFragmentById(R.id.fragment_container) !is HomeFragment
-        ) {
-            // Replace the current fragment with the specific fragment.
-            loadFragment(HomeFragment())
-            return
-        } else {
-            // Close the app.
-            finish()
-        }
-    }
+        // if current fragment is home, user can tap back twice to exit
+        if (currentFragment is HomeFragment){
+            if (doubleBackToExitPressedOnce) {
+                finish()
+                return
+            }
 
-    private fun loadFragment(fragment: Fragment) {
-        val transaction = supportFragmentManager.beginTransaction()
-        transaction.replace(R.id.fragment_container, fragment)
-        transaction.addToBackStack(null)
-        transaction.commit()
-        bottomNavigation.selectedItemId = R.id.home
+            this.doubleBackToExitPressedOnce = true
+            Toast.makeText(this, "Tap again to exit", Toast.LENGTH_SHORT).show()
+
+            // reset double tap timer when it has exceeded 2 seconds
+            Handler(Looper.getMainLooper()).postDelayed(Runnable { doubleBackToExitPressedOnce = false }, 2000)
+            return
+        }
+
+        super.onBackPressed()
     }
 
     fun checkAndCreateUserDocument() {

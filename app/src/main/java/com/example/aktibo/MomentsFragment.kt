@@ -68,22 +68,26 @@ class MomentsFragment : Fragment() {
             // Apply fadeOut animation when pressed
             imageButton.startAnimation(fadeOut)
 
-            val fragmentManager = getParentFragmentManager()
-            val fragmentTransaction = fragmentManager.beginTransaction()
-            fragmentTransaction.setCustomAnimations(
-                R.anim.slide_in_right, // Enter animation
-                R.anim.slide_out_left, // Exit animation
-                R.anim.slide_in_right, // Pop enter animation (for back navigation)
-                R.anim.slide_out_left // Pop exit animation (for back navigation)
-            )
-            fragmentTransaction.replace(R.id.fragment_container, NewMomentFragment())
-            fragmentTransaction.commit()
+            replaceFragmentWithAnim(NewMomentFragment())
 
             // Apply fadeIn animation when released
             imageButton.startAnimation(fadeIn)
         }
 
         return view
+    }
+    private fun replaceFragmentWithAnim(fragment: Fragment) {
+        val fragmentManager = getParentFragmentManager()
+        val fragmentTransaction = fragmentManager.beginTransaction()
+        fragmentTransaction.setCustomAnimations(
+            R.anim.slide_in_right, // Enter animation
+            R.anim.slide_out_left, // Exit animation
+            R.anim.slide_in_left, // Pop enter animation (for back navigation)
+            R.anim.slide_out_right // Pop exit animation (for back navigation)
+        )
+        fragmentTransaction.replace(R.id.fragment_container, fragment)
+        fragmentTransaction.addToBackStack(null)
+        fragmentTransaction.commit()
     }
 
     // Helper function to check if the ScrollView is at the bottom

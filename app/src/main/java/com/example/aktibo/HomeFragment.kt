@@ -3,6 +3,7 @@ package com.example.aktibo
 import android.Manifest
 import android.app.Activity
 import android.content.ContentValues.TAG
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -14,6 +15,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AnimationUtils
 import android.widget.ImageButton
 import android.widget.TextView
 import androidx.annotation.RequiresApi
@@ -44,11 +46,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-
-interface Backable {
-    fun onBackPressed(): Boolean
-}
-class HomeFragment : Fragment(), Backable {
+class HomeFragment : Fragment() {
 
     private lateinit var auth: FirebaseAuth
     private val MY_PERMISSIONS_REQUEST_ACTIVITY_RECOGNITION = 123
@@ -58,38 +56,45 @@ class HomeFragment : Fragment(), Backable {
         .addDataType(DataType.AGGREGATE_ACTIVITY_SUMMARY, FitnessOptions.ACCESS_READ)
         .build()
     private lateinit var barChart: BarChart
+    private lateinit var stepsMore: ImageButton
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_home, container, false)
 
-        val button = view.findViewById<ImageButton>(R.id.imageButton)
-        button.setOnClickListener {
-            // Get the fragment manager.
-            val fragmentManager = getParentFragmentManager()
+        // load press animations
+        val fadeIn = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_in)
+        val fadeOut = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_out)
 
-            // Create a fragment transaction.
-            val fragmentTransaction = fragmentManager.beginTransaction()
+        // transition to account fragment
+        val imageButtonAccount = view.findViewById<ImageButton>(R.id.imageButtonAccount)
+        imageButtonAccount.setOnClickListener {
+            // Apply fadeOut animation when pressed
+            imageButtonAccount.startAnimation(fadeOut)
 
-            // Replace the current fragment with the new fragment.
-            fragmentTransaction.replace(R.id.fragment_container, AccountFragment())
+            replaceFragmentWithAnim(AccountFragment())
 
-            // Commit the fragment transaction.
-            fragmentTransaction.commit()
+            // Apply fadeIn animation when released
+            imageButtonAccount.startAnimation(fadeIn)
         }
 
+        // transition to more detailed steps graph
+        val stepsMore = view.findViewById<ImageButton>(R.id.stepsMore)
+        stepsMore.setOnClickListener {
+            // Apply fadeOut animation when pressed
+            stepsMore.startAnimation(fadeOut)
+
+            replaceFragmentWithAnim(DetailedStepsGraphFragment())
+
+            // Apply fadeIn animation when released
+            stepsMore.startAnimation(fadeIn)
+        }
+
+        // initialize barChart
         barChart = view.findViewById(R.id.barChart)
-
-        return view
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
 
         val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
 
@@ -102,6 +107,29 @@ class HomeFragment : Fragment(), Backable {
         } else {
             accessGoogleFit()
         }
+
+        return view
+    }
+
+    private fun replaceFragmentWithAnim(fragment: Fragment) {
+        val fragmentManager = getParentFragmentManager()
+        val fragmentTransaction = fragmentManager.beginTransaction()
+        fragmentTransaction.setCustomAnimations(
+            R.anim.slide_in_right, // Enter animation
+            R.anim.slide_out_left, // Exit animation
+            R.anim.slide_in_left, // Pop enter animation (for back navigation)
+            R.anim.slide_out_right // Pop exit animation (for back navigation)
+        )
+        fragmentTransaction.replace(R.id.fragment_container, fragment)
+        fragmentTransaction.addToBackStack(null)
+        fragmentTransaction.commit()
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+
 
         // Example data (replace this with your own data)
         val inputData = intArrayOf(25, 123, 400, 87)
@@ -309,48 +337,6 @@ class HomeFragment : Fragment(), Backable {
         barChart.setFitBars(true)
 
         barChart.invalidate()
-
-        //val dataSet = BarDataSet(entries, null)
-        //dataSet.color = Color.rgb(99,169,31)
-
-        // Set a custom bar width (default is 0.85f)
-//        val leftYAxis = barChart.axisLeft
-//        leftYAxis.granularity = 100f
-//        leftYAxis.labelCount = 5
-//        leftYAxis.valueFormatter = object : ValueFormatter() {
-//            override fun getFormattedValue(value: Float): String {
-//                return value.toInt().toString()
-//            }
-//        }
-
-        // Get the X-axis and Y-axis of the chart
-//        val xAxis = barChart.xAxis
-//        val yAxisLeft = barChart.axisLeft
-
-// Disable gridlines for both X and Y axes
-//        xAxis.setDrawGridLines(false)
-//        yAxisLeft.setDrawGridLines(false)
-//
-//        xAxis.textColor = Color.RED
-//
-//
-//
-//        yAxisLeft.textColor = Color.BLUE
-//        dataSet.valueTextColor = Color.GREEN
-
-
-
-
-    }
-
-    override fun onBackPressed(): Boolean {
-        // Replace the current fragment with another fragment.
-        val fragmentManager = getParentFragmentManager()
-        val fragmentTransaction = fragmentManager.beginTransaction()
-        fragmentTransaction.replace(R.id.fragment_container, HomeFragment())
-        fragmentTransaction.commit()
-
-        return true
     }
 
     private fun checkAndRequestActivityRecognitionPermission() {
