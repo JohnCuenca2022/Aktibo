@@ -55,5 +55,17 @@
         <item name="android:background">@drawable/custom_calendar_background</item>
     </style>
 
+    <style name="ShapeAppearanceOverlay.MaterialCardView.Cut" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopRight">0dp</item>
+        <item name="cornerSizeTopLeft">20dp</item>
+        <item name="cornerSizeBottomRight">0dp</item>
+        <item name="cornerSizeBottomLeft">20dp</item>
+    </style>
+
+    <style name="mySpinnerItemStyle" parent="">
+        <item name="android:colorForeground">@color/off_white</item>
+    </style>
+
 
 </resources>

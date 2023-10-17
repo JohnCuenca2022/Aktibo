@@ -47,12 +47,26 @@ class ExerciseFragment : Fragment() {
 
         val lightExerciseButton = view.findViewById<ImageButton>(R.id.lightExerciseButton)
         lightExerciseButton.setOnClickListener{
-            replaceFragmentWithAnim(ExerciseItemFragment())
+            replaceFragmentWithAnimWithData(ExerciseRegionsFragment(), "light")
         }
 
+        val moderateExerciseButton = view.findViewById<ImageButton>(R.id.moderateExerciseButton)
+        moderateExerciseButton.setOnClickListener{
+            replaceFragmentWithAnimWithData(ExerciseRegionsFragment(), "moderate")
+        }
+
+        val vigorousExerciseButton = view.findViewById<ImageButton>(R.id.vigorousExerciseButton)
+        vigorousExerciseButton.setOnClickListener{
+            replaceFragmentWithAnimWithData(ExerciseRegionsFragment(), "vigorous")
+        }
     }
 
-    private fun replaceFragmentWithAnim(fragment: Fragment) {
+    private fun replaceFragmentWithAnimWithData(fragment: Fragment, intensity: String) {
+        val bundle = Bundle()
+        bundle.putString("intensity", intensity)
+        val newFragment = fragment
+        newFragment.arguments = bundle
+
         val fragmentManager = getParentFragmentManager()
         val fragmentTransaction = fragmentManager.beginTransaction()
         fragmentTransaction.setCustomAnimations(
@@ -61,7 +75,7 @@ class ExerciseFragment : Fragment() {
             R.anim.slide_in_left, // Pop enter animation (for back navigation)
             R.anim.slide_out_right // Pop exit animation (for back navigation)
         )
-        fragmentTransaction.replace(R.id.fragment_container, fragment)
+        fragmentTransaction.replace(R.id.fragment_container, newFragment)
         fragmentTransaction.addToBackStack(null)
         fragmentTransaction.commit()
     }
