@@ -80,6 +80,9 @@ class NewUser3Fragment : Fragment() {
             if (weightEditText == ""){
                 Toast.makeText(context, "Please input a target weight", Toast.LENGTH_SHORT).show()
             }
+            else if (weightEditText.toDouble() <= 0){
+                Toast.makeText(context, "Weight must be greater than 0", Toast.LENGTH_SHORT).show()
+            }
             else {
                 var targetWeight = weightEditText.toDouble()
                 val weightSpinnerSelected: String = weightSpinner.selectedItem.toString() // kg or lbs

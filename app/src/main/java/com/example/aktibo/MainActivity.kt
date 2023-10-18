@@ -52,7 +52,7 @@ class MainActivity : AppCompatActivity() {
         if (::auth.isInitialized) {
             auth.addAuthStateListener(authStateListener);
 
-            // Check if user is signed in (non-null) and update UI accordingly.
+            // Check if user is signed
             val currentUser = auth.currentUser
             if (currentUser == null) {
                 // If user is not logged-in, redirect to Login
@@ -62,23 +62,21 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        checkAndCreateUserDocument()
-
         createNotificationChannel()
 
         val rnds = (0..10).random()
         // createNotification(rnds, "Hello", "world")
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            println("we made it here")
-            val calendar = Calendar.getInstance()
-            //10 is for how many seconds from now you want to schedule also you can create a custom instance of Callender to set on exact time
-            calendar.add(Calendar.SECOND, 10)
-            //function for Creating [Notification Channel][1]
-            createNotificationChannel()
-            //function for scheduling the notification
-            scheduleNotification(calendar, "Hello", "world 11")
-        }
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            println("we made it here")
+//            val calendar = Calendar.getInstance()
+//            //10 is for how many seconds from now you want to schedule also you can create a custom instance of Callender to set on exact time
+//            calendar.add(Calendar.SECOND, 10)
+//            //function for Creating [Notification Channel][1]
+//            createNotificationChannel()
+//            //function for scheduling the notification
+//            scheduleNotification(calendar, "Hello", "world 11")
+//        }
 
 //        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 //            val channel = NotificationChannel(

@@ -34,43 +34,23 @@ class NewUser4Fragment : Fragment() {
 
         val button_12days: Button = view.findViewById(R.id.button_12days)
         button_12days.setOnClickListener{
+            sharedViewModel.exerciseGoal = 1
             Toast.makeText(context, "Creating your account", Toast.LENGTH_SHORT).show()
             checkAndCreateUserDocument()
         }
 
         val button_34days: Button = view.findViewById(R.id.button_34days)
         button_34days.setOnClickListener{
-
-
-            val fragmentManager = getParentFragmentManager()
-            val transaction = fragmentManager.beginTransaction()
-            transaction.setCustomAnimations(
-                R.anim.slide_in_right, // Enter animation
-                R.anim.slide_out_left, // Exit animation
-                R.anim.slide_in_left, // Pop enter animation (for back navigation)
-                R.anim.slide_out_right // Pop exit animation (for back navigation)
-            )
-            transaction.replace(R.id.fragment_container_new_user, NewUser3Fragment())
-            transaction.addToBackStack(null)
-            transaction.commit()
+            sharedViewModel.exerciseGoal = 2
+            Toast.makeText(context, "Creating your account", Toast.LENGTH_SHORT).show()
+            checkAndCreateUserDocument()
         }
 
         val button_5days: Button = view.findViewById(R.id.button_5days)
         button_5days.setOnClickListener{
-
-            sharedViewModel.targetWeight = sharedViewModel.weight
-
-            val fragmentManager = getParentFragmentManager()
-            val transaction = fragmentManager.beginTransaction()
-            transaction.setCustomAnimations(
-                R.anim.slide_in_right, // Enter animation
-                R.anim.slide_out_left, // Exit animation
-                R.anim.slide_in_left, // Pop enter animation (for back navigation)
-                R.anim.slide_out_right // Pop exit animation (for back navigation)
-            )
-            transaction.replace(R.id.fragment_container_new_user, NewUser4Fragment())
-            transaction.addToBackStack(null)
-            transaction.commit()
+            sharedViewModel.exerciseGoal = 3
+            Toast.makeText(context, "Creating your account", Toast.LENGTH_SHORT).show()
+            checkAndCreateUserDocument()
         }
 
         return view
@@ -97,21 +77,18 @@ class NewUser4Fragment : Fragment() {
                                 "dateJoined" to FieldValue.serverTimestamp()
                             )
 
-                            // Check if the user is a Google user
+                            // Check if the user is a Google user (name and image)
                             if (user.providerData.any { it.providerId == GoogleAuthProvider.PROVIDER_ID }) {
                                 // If the user is signed in with Google, use their Google account name as the username
                                 val googleSignInAccount = context?.let {
-                                    GoogleSignIn.getLastSignedInAccount(
-                                        it
-                                    )
+                                    GoogleSignIn.getLastSignedInAccount(it)
                                 }
                                 val googleUserName = googleSignInAccount?.displayName
 
                                 if (!googleUserName.isNullOrEmpty()) {
                                     data["username"] = googleUserName
                                 } else {
-                                    data["username"] =
-                                        "AktiboUser" // Default username if Google name is unavailable
+                                    data["username"] = "AktiboUser" // Default username if Google name is unavailable
                                 }
 
                                 // Check if the Google user has a profile image
@@ -124,26 +101,30 @@ class NewUser4Fragment : Fragment() {
                             } else {
                                 // For non-Google users, set the username to "AktiboUser"
                                 data["username"] = "AktiboUser"
-                                data["userImage"] =
-                                    "" // Set userImage to an empty string for non-Google users
+                                data["userImage"] = "" // Set userImage to an empty string for non-Google users
                             }
+
+                            data["weight"] = sharedViewModel.weight.toDouble()
+                            data["height"] = sharedViewModel.height.toDouble()
+                            data["targetWeight"] = sharedViewModel.targetWeight.toDouble()
+                            data["weightGoal"] = sharedViewModel.weightGoal
+                            data["exerciseGoal"] = sharedViewModel.exerciseGoal
 
                             // Create the document
                             usersCollection.document(userId).set(data)
                                 .addOnSuccessListener {
-                                    // Document created successfully
-                                    // You can add any additional logic here
+                                    // Document created successfully, redirect to Main Activity
                                     goToMainActivity()
                                 }
                                 .addOnFailureListener { exception ->
                                     // Handle the error
-                                    // You can add error handling here
                                     Toast.makeText(context, "Failed to create new user", Toast.LENGTH_SHORT).show()
                                 }
                         }
-                    } else {
+
+                    }
+                    else {
                         // Handle the error
-                        // You can add error handling here
                     }
                 }
         }

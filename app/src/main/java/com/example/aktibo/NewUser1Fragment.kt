@@ -66,8 +66,14 @@ class NewUser1Fragment : Fragment() {
             if (weightEditText == ""){
                 Toast.makeText(context, "Please input your weight", Toast.LENGTH_SHORT).show()
             }
+            else if (weightEditText.toFloat() <= 0){
+                Toast.makeText(context, "Weight must be greater than 0", Toast.LENGTH_SHORT).show()
+            }
             else if (heightEditText == "") {
                 Toast.makeText(context, "Please input your height", Toast.LENGTH_SHORT).show()
+            }
+            else if (heightEditText.toFloat() <= 100) {
+                Toast.makeText(context, "Height must be greater than 100 cm (39.4 in)", Toast.LENGTH_SHORT).show()
             }
             else {
                 if (weightSpinnerSelected == "lbs") {
