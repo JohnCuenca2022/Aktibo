@@ -16,5 +16,10 @@
     <string name="_1_start_on_your_hands_and_toes_with_your_hands_slightly_wider_than_shoulder_width_apart"><![CDATA[<string name=\"list\">\n  <li>1) Item 1</li>\\n\n  <li>2) Item 2</li>\\n\n  <li>3) Item 3</li>\\n\n</string>\n]]></string>
     <string name="channel_name">Aktibo</string>
     <string name="channel_description">Aktibo application</string>
+    <string name="TFAtitle">Enable Two-Factor Auth</string>
+    <string name="TFAsupporting_text">2FA will add an additional layer of security to your account by requiring an OTP code received through SMS when logging into your account\n\nIt is highly encouraged to enroll more than one phone number to avoid losing access to your account. </string>
+    <string name="accept">Continue</string>
+    <string name="decline">Cancel</string>
+    <string name="cancel">Cancel</string>
 
 </resources>

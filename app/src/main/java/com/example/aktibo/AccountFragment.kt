@@ -6,12 +6,14 @@ import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
 import android.util.Log
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
@@ -22,15 +24,24 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.fitness.Fitness
 import com.google.android.gms.fitness.FitnessOptions
 import com.google.android.gms.fitness.data.DataType
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.FirebaseException
 import com.google.firebase.FirebaseTooManyRequestsException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthMultiFactorException
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.MultiFactor
+import com.google.firebase.auth.MultiFactorAssertion
+import com.google.firebase.auth.MultiFactorSession
 import com.google.firebase.auth.PhoneAuthCredential
+import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
+import com.google.firebase.auth.PhoneMultiFactorGenerator
+import com.google.firebase.auth.PhoneMultiFactorInfo
 import com.google.firebase.firestore.FirebaseFirestore
 import com.squareup.picasso.Picasso
+import java.util.concurrent.TimeUnit
 
 
 class AccountFragment : Fragment() {
@@ -101,7 +112,18 @@ class AccountFragment : Fragment() {
         // Two-Factor Authentication
         val twoFAButton = view.findViewById<Button>(R.id.button_twoFA)
         twoFAButton.setOnClickListener{
-            signIn()
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(resources.getString(R.string.TFAtitle))
+                .setMessage(resources.getString(R.string.TFAsupporting_text))
+                .setNeutralButton(resources.getString(R.string.cancel)) { dialog, which ->
+                    // Respond to neutral button press
+                }
+                .setPositiveButton(resources.getString(R.string.accept)) { dialog, which ->
+                    // Respond to positive button press
+                    signIn()
+                }
+                .show()
+
         }
 
         // Logout
@@ -190,42 +212,299 @@ class AccountFragment : Fragment() {
                     // Sign in success, update UI with the signed-in user's information
                     Log.d(LoginActivity.TAG, "signInWithCredential:success")
                     val user = auth.currentUser
-                    val userID = user?.uid
 
-                    var phoneNumber = "";
+                    if (user != null) {
+                        user.multiFactor.session.addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                val multiFactorSession: MultiFactorSession = task.result
 
-                    val builder: AlertDialog.Builder = AlertDialog.Builder(requireContext())
-                    builder.setTitle("Input your Phone Number")
+                                val textView = TextView(requireContext())
+                                val inputField = EditText(requireContext())
 
-                    // Set up the input
-                    val input = EditText(requireContext())
-                    input.inputType =
-                        InputType.TYPE_CLASS_PHONE
-                    builder.setView(input)
+                                textView.setText("+63")
+                                textView.setTextSize(20F)
+                                textView.layoutParams = ViewGroup.LayoutParams(
+                                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                                    ViewGroup.LayoutParams.MATCH_PARENT
+                                )
+                                textView.gravity = Gravity.CENTER
 
-                    builder.setPositiveButton(
-                        "OK"
-                    ) { dialog, which ->
+                                inputField.layoutParams = ViewGroup.LayoutParams(
+                                    300, // Set the width to MATCH_PARENT
+                                    ViewGroup.LayoutParams.MATCH_PARENT // Use WRAP_CONTENT for height
+                                )
 
-//                        phoneNumber = input.getText().toString()
-//                        Toast.makeText(context, phoneNumber, Toast.LENGTH_SHORT).show()
-//                        val phoneAuthOptions = PhoneAuthOptions.newBuilder()
-//                            .setPhoneNumber(phoneNumber)
-//                            .setTimeout(30L, TimeUnit.SECONDS)
-//                            .setMultiFactorSession(MultiFactorSession)
-//                            .setCallbacks(callbacks)
-//                            .build()
-//
-//                        PhoneAuthProvider.verifyPhoneNumber(phoneAuthOptions)
+                                inputField.inputType = InputType.TYPE_CLASS_PHONE
 
+                                val layout = LinearLayout(context)
+                                layout.layoutParams = LinearLayout.LayoutParams(
+                                    LinearLayout.LayoutParams.MATCH_PARENT, // Set the width to MATCH_PARENT
+                                    LinearLayout.LayoutParams.WRAP_CONTENT // Use WRAP_CONTENT for height
+                                )
+                                layout.gravity = Gravity.CENTER // center content
+                                layout.addView(textView)
+                                layout.addView(inputField)
+
+                                MaterialAlertDialogBuilder(requireContext())
+                                    .setTitle("Enter your Phone Number")
+                                    .setView(layout)
+                                    .setPositiveButton("OK") { dialog, _ ->
+                                        val userInput = inputField.text.toString().trim()
+                                        val regex = Regex("^0+(?!$)") // remove leading zeros ex. 09215427766 -> 9215427766
+                                        userInput.replace(regex, "")
+
+                                        //send OTP
+                                        val phoneNumber = "+63${userInput}";
+                                        val phoneAuthOptions = PhoneAuthOptions.newBuilder()
+                                            .setActivity(requireActivity())
+                                        .setPhoneNumber(phoneNumber)
+                                        .setTimeout(30L, TimeUnit.SECONDS)
+                                        .setMultiFactorSession(multiFactorSession)
+                                        .setCallbacks(callbacks)
+                                        .build()
+
+                                        PhoneAuthProvider.verifyPhoneNumber(phoneAuthOptions)
+
+                                        dialog.dismiss()
+
+                                        // Input OTP code
+                                        val inputField = EditText(requireContext())
+
+                                        inputField.layoutParams = ViewGroup.LayoutParams(
+                                            300, // Set the width to MATCH_PARENT
+                                            ViewGroup.LayoutParams.MATCH_PARENT // Use WRAP_CONTENT for height
+                                        )
+
+                                        inputField.gravity = Gravity.CENTER
+                                        inputField.inputType = InputType.TYPE_CLASS_NUMBER
+
+                                        val layout = LinearLayout(context)
+                                        layout.layoutParams = LinearLayout.LayoutParams(
+                                            LinearLayout.LayoutParams.MATCH_PARENT, // Set the width to MATCH_PARENT
+                                            LinearLayout.LayoutParams.WRAP_CONTENT // Use WRAP_CONTENT for height
+                                        )
+                                        layout.gravity = Gravity.CENTER // center content
+
+                                        layout.addView(inputField)
+
+                                        MaterialAlertDialogBuilder(requireContext())
+                                            .setTitle("Please enter your OTP code")
+                                            .setView(layout)
+                                            .setPositiveButton("OK") { dialog, _ ->
+                                                val verificationCode = inputField.text.toString().trim()
+                                                val credential = PhoneAuthProvider.getCredential(verificationId, verificationCode)
+
+                                                val multiFactorAssertion
+                                                        = PhoneMultiFactorGenerator.getAssertion(credential)
+
+                                                FirebaseAuth.getInstance()
+                                                    .currentUser
+                                                    ?.multiFactor
+                                                    ?.enroll(multiFactorAssertion, "My personal phone number")
+                                                    ?.addOnCompleteListener {
+                                                        Toast.makeText(context, "Phone number successfully saved.", Toast.LENGTH_SHORT).show()
+                                                    }
+
+
+                                                dialog.dismiss()
+                                            }
+                                            .show()
+                                    }
+                                    .setNegativeButton("Cancel") { dialog, _ ->
+                                        dialog.dismiss()
+                                    }
+                                    .show()
+
+                            }
+                        }
                     }
-                    builder.setNegativeButton(
-                        "Cancel"
-                    ) { dialog, which -> dialog.cancel() }
 
-                    builder.show();
+                }
+                else if (task.exception is FirebaseAuthMultiFactorException) {
+                    // The user is a multi-factor user. Second factor challenge is required.
+                    val multiFactorResolver = (task.exception as FirebaseAuthMultiFactorException).resolver
 
-                } else {
+                    val items = mutableListOf<String>()
+
+                    for ((index, item) in multiFactorResolver.hints.withIndex()) {
+                        val selectedHint = multiFactorResolver.hints[index] as PhoneMultiFactorInfo
+                        items.add(selectedHint.phoneNumber)
+                    }
+
+                    val itemsArray = items.toTypedArray()
+
+                    MaterialAlertDialogBuilder(requireContext())
+                        .setTitle("Choose a phone number")
+                        .setItems(itemsArray) { dialog, which ->
+
+                            val selectedHint = multiFactorResolver.hints[which] as PhoneMultiFactorInfo
+                            val phoneAuthOptions = PhoneAuthOptions.newBuilder()
+                                .setActivity(requireActivity())
+                                .setMultiFactorHint(selectedHint)
+                                .setTimeout(30L, TimeUnit.SECONDS)
+                                .setMultiFactorSession(multiFactorResolver.session)
+                                .setCallbacks(callbacks) // Optionally disable instant verification.
+                                // .requireSmsValidation(true)
+                                .build()
+                            PhoneAuthProvider.verifyPhoneNumber(phoneAuthOptions)
+
+                            // input OTP
+                            val inputField = EditText(requireContext())
+
+                            inputField.layoutParams = ViewGroup.LayoutParams(
+                                300, // Set the width to MATCH_PARENT
+                                ViewGroup.LayoutParams.MATCH_PARENT // Use WRAP_CONTENT for height
+                            )
+
+                            inputField.gravity = Gravity.CENTER
+                            inputField.inputType = InputType.TYPE_CLASS_NUMBER
+
+                            val layout = LinearLayout(context)
+                            layout.layoutParams = LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.MATCH_PARENT, // Set the width to MATCH_PARENT
+                                LinearLayout.LayoutParams.WRAP_CONTENT // Use WRAP_CONTENT for height
+                            )
+                            layout.gravity = Gravity.CENTER // center content
+
+                            layout.addView(inputField)
+
+                            MaterialAlertDialogBuilder(requireContext())
+                                .setTitle("Please enter your OTP code")
+                                .setView(layout)
+                                .setPositiveButton("OK") { dialog, _ ->
+                                    val verificationCode = inputField.text.toString().trim()
+                                    val credential = PhoneAuthProvider.getCredential(verificationId, verificationCode)
+
+                                    val multiFactorAssertion: MultiFactorAssertion =
+                                        PhoneMultiFactorGenerator.getAssertion(credential)
+
+                                    // Complete sign-in.
+                                    multiFactorResolver
+                                        .resolveSignIn(multiFactorAssertion)
+                                        .addOnCompleteListener { task ->
+                                            if (task.isSuccessful) {
+                                                // User successfully signed in with the
+                                                // second factor phone number.
+
+                                                val user = auth.currentUser
+
+                                                if (user != null) {
+                                                    user.multiFactor.session.addOnCompleteListener { task ->
+                                                        if (task.isSuccessful) {
+                                                            val multiFactorSession: MultiFactorSession = task.result
+
+                                                            val textView = TextView(requireContext())
+                                                            val inputField = EditText(requireContext())
+
+                                                            textView.setText("+63")
+                                                            textView.setTextSize(20F)
+                                                            textView.layoutParams = ViewGroup.LayoutParams(
+                                                                ViewGroup.LayoutParams.WRAP_CONTENT,
+                                                                ViewGroup.LayoutParams.MATCH_PARENT
+                                                            )
+                                                            textView.gravity = Gravity.CENTER
+
+                                                            inputField.layoutParams = ViewGroup.LayoutParams(
+                                                                300, // Set the width to MATCH_PARENT
+                                                                ViewGroup.LayoutParams.MATCH_PARENT // Use WRAP_CONTENT for height
+                                                            )
+
+                                                            inputField.inputType = InputType.TYPE_CLASS_PHONE
+
+                                                            val layout = LinearLayout(context)
+                                                            layout.layoutParams = LinearLayout.LayoutParams(
+                                                                LinearLayout.LayoutParams.MATCH_PARENT, // Set the width to MATCH_PARENT
+                                                                LinearLayout.LayoutParams.WRAP_CONTENT // Use WRAP_CONTENT for height
+                                                            )
+                                                            layout.gravity = Gravity.CENTER // center content
+                                                            layout.addView(textView)
+                                                            layout.addView(inputField)
+
+                                                            MaterialAlertDialogBuilder(requireContext())
+                                                                .setTitle("Enter your Phone Number")
+                                                                .setView(layout)
+                                                                .setPositiveButton("OK") { dialog, _ ->
+                                                                    val userInput = inputField.text.toString().trim()
+                                                                    val regex = Regex("^0+(?!$)") // remove leading zeros ex. 09215427766 -> 9215427766
+                                                                    userInput.replace(regex, "")
+
+                                                                    //send OTP
+                                                                    val phoneNumber = "+63${userInput}";
+                                                                    val phoneAuthOptions = PhoneAuthOptions.newBuilder()
+                                                                        .setActivity(requireActivity())
+                                                                        .setPhoneNumber(phoneNumber)
+                                                                        .setTimeout(30L, TimeUnit.SECONDS)
+                                                                        .setMultiFactorSession(multiFactorSession)
+                                                                        .setCallbacks(callbacks)
+                                                                        .build()
+
+                                                                    PhoneAuthProvider.verifyPhoneNumber(phoneAuthOptions)
+
+                                                                    dialog.dismiss()
+
+                                                                    // Input OTP code
+                                                                    val inputField = EditText(requireContext())
+
+                                                                    inputField.layoutParams = ViewGroup.LayoutParams(
+                                                                        300, // Set the width to MATCH_PARENT
+                                                                        ViewGroup.LayoutParams.MATCH_PARENT // Use WRAP_CONTENT for height
+                                                                    )
+
+                                                                    inputField.gravity = Gravity.CENTER
+                                                                    inputField.inputType = InputType.TYPE_CLASS_NUMBER
+
+                                                                    val layout = LinearLayout(context)
+                                                                    layout.layoutParams = LinearLayout.LayoutParams(
+                                                                        LinearLayout.LayoutParams.MATCH_PARENT, // Set the width to MATCH_PARENT
+                                                                        LinearLayout.LayoutParams.WRAP_CONTENT // Use WRAP_CONTENT for height
+                                                                    )
+                                                                    layout.gravity = Gravity.CENTER // center content
+
+                                                                    layout.addView(inputField)
+
+                                                                    MaterialAlertDialogBuilder(requireContext())
+                                                                        .setTitle("Please enter your OTP code")
+                                                                        .setView(layout)
+                                                                        .setPositiveButton("OK") { dialog, _ ->
+                                                                            val verificationCode = inputField.text.toString().trim()
+                                                                            val credential = PhoneAuthProvider.getCredential(verificationId, verificationCode)
+
+                                                                            val multiFactorAssertion
+                                                                                    = PhoneMultiFactorGenerator.getAssertion(credential)
+
+                                                                            FirebaseAuth.getInstance()
+                                                                                .currentUser
+                                                                                ?.multiFactor
+                                                                                ?.enroll(multiFactorAssertion, "My personal phone number")
+                                                                                ?.addOnCompleteListener {
+                                                                                    Toast.makeText(context, "Phone number successfully saved.", Toast.LENGTH_SHORT).show()
+                                                                                }
+
+
+                                                                            dialog.dismiss()
+                                                                        }
+                                                                        .show()
+                                                                }
+                                                                .setNegativeButton("Cancel") { dialog, _ ->
+                                                                    dialog.dismiss()
+                                                                }
+                                                                .show()
+
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                        }
+
+                                    dialog.dismiss()
+                                }
+                                .show()
+                        }
+                        .show()
+
+                }
+                else {
                     // If sign in fails, display a message to the user.
                     Log.w(LoginActivity.TAG, "signInWithCredential:failure", task.exception)
                     Toast.makeText(context, "Authentication failed.", Toast.LENGTH_SHORT).show()
@@ -251,9 +530,11 @@ class AccountFragment : Fragment() {
             // This callback is invoked in response to invalid requests for
             // verification, like an incorrect phone number.
             if (e is FirebaseAuthInvalidCredentialsException) {
+                Toast.makeText(context, "Invalid Phone Number", Toast.LENGTH_SHORT).show()
                 // Invalid request
                 // ...
             } else if (e is FirebaseTooManyRequestsException) {
+                Toast.makeText(context, "Too Many Requests", Toast.LENGTH_SHORT).show()
                 // The SMS quota for the project has been exceeded
                 // ...
             }
@@ -268,6 +549,7 @@ class AccountFragment : Fragment() {
             // We now need to ask the user to enter the code and then construct a
             // credential by combining the code with a verification ID.
             // Save the verification ID and resending token for later use.
+
             this@AccountFragment.verificationId = verificationId
             this@AccountFragment.forceResendingToken = forceResendingToken
             // ...
