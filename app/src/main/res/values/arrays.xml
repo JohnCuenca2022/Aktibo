@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="weight_array">
+        <item>kg</item>
+        <item>lbs</item>
+    </string-array>
+
+    <string-array name="height_array">
+        <item>cm</item>
+        <item>in</item>
+    </string-array>
+
+    <string-array name="sex_array">
+        <item>Male</item>
+        <item>Female</item>
+    </string-array>
+</resources>
