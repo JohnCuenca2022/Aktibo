@@ -1,6 +1,7 @@
 package com.example.aktibo
 
 import android.Manifest
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.ContentValues.TAG
 import android.content.Context
@@ -54,6 +55,7 @@ class HomeFragment : Fragment() {
         .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
         .addDataType(DataType.AGGREGATE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
         .addDataType(DataType.AGGREGATE_ACTIVITY_SUMMARY, FitnessOptions.ACCESS_READ)
+        .addDataType(DataType.TYPE_CALORIES_EXPENDED, FitnessOptions.ACCESS_READ)
         .build()
     private lateinit var barChart: BarChart
     private lateinit var stepsMore: ImageButton
@@ -218,14 +220,7 @@ class HomeFragment : Fragment() {
                     .flatMap { it.dataPoints }
                     .sumBy { it.getValue(Field.FIELD_STEPS).asInt() }
                 Log.i(TAG, "Total steps: $totalSteps")
-                val textViewSteps = view?.findViewById<TextView>(R.id.textViewSteps)
-                val progressBarSteps = view?.findViewById<CircularProgressIndicator>(R.id.progressBarSteps)
-                if (progressBarSteps != null) {
-                    progressBarSteps.setProgress(totalSteps)
-                }
-                if (textViewSteps != null) {
-                    textViewSteps.setText("$totalSteps")
-                }
+
             }
     }
 
@@ -268,7 +263,9 @@ class HomeFragment : Fragment() {
                             Log.i(TAG,stepCount.toString())
 
                         }
+
                         updateChart(intArray, dayArray)
+
                     }
                 }
             }
@@ -337,6 +334,49 @@ class HomeFragment : Fragment() {
         barChart.setFitBars(true)
 
         barChart.invalidate()
+
+        // circular progress bar
+        val totalSteps = data[0]
+        val textViewSteps = view?.findViewById<TextView>(R.id.textViewSteps)
+        val progressBarSteps = view?.findViewById<CircularProgressIndicator>(R.id.progressBarSteps)
+        if (progressBarSteps != null) {
+            // progressBarSteps.setProgress(totalSteps)
+
+            // Create a ValueAnimator
+            val animator = ValueAnimator.ofInt(0, totalSteps)
+            animator.duration = 1000 // Animation duration in milliseconds
+
+            animator.addUpdateListener { animation ->
+                val animatedValue = animation.animatedValue as Int
+                progressBarSteps.progress = animatedValue
+            }
+
+            animator.start()
+        }
+        if (textViewSteps != null) {
+            textViewSteps.setText("$totalSteps")
+
+            // Create a ValueAnimator
+            val animator = ValueAnimator.ofInt(0, totalSteps)
+            animator.duration = 1000 // Animation duration in milliseconds
+
+            animator.addUpdateListener { animation ->
+                val animatedValue = animation.animatedValue as Int
+                textViewSteps.text = animatedValue.toString()
+            }
+
+            animator.start()
+        }
+    }
+
+    private fun showCaloriesBurnedFromSteps(stepCount: Int){
+        // Constants for the conversion
+        val STEPS_PER_100_CALORIES = 2000
+        val CALORIES_BURNED_PER_STEP = 100f / STEPS_PER_100_CALORIES
+
+        // Estimate calories burned
+        val caloriesBurned = stepCount * CALORIES_BURNED_PER_STEP
+
     }
 
     private fun checkAndRequestActivityRecognitionPermission() {
