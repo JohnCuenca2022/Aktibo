@@ -39,7 +39,9 @@ import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.auth.PhoneMultiFactorGenerator
 import com.google.firebase.auth.PhoneMultiFactorInfo
+import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.ktx.Firebase
 import com.squareup.picasso.Picasso
 import java.util.concurrent.TimeUnit
 
@@ -132,6 +134,7 @@ class AccountFragment : Fragment() {
         auth = FirebaseAuth.getInstance();
         logoutButton.setOnClickListener {
             auth.signOut();
+            Firebase.auth.signOut()
             Fitness.getConfigClient(requireActivity(),  GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions))
                 .disableFit()
                 .addOnSuccessListener {
@@ -140,10 +143,21 @@ class AccountFragment : Fragment() {
                 .addOnFailureListener { e ->
                     Log.w(TAG,"There was an error disabling Google Fit", e)
                 }
+            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build()
+            val googleSignInClient: GoogleSignInClient = GoogleSignIn.getClient(requireActivity(), gso)
+            googleSignInClient.signOut().addOnCompleteListener(requireActivity()) { signOutTask ->
+                if (signOutTask.isSuccessful) {
+                    val intent = Intent(requireActivity(), LoginActivity::class.java)
+                    startActivity(intent)
+                    requireActivity().finish()
+                } else {
+                    // Sign out failed
+                }
+            }
 
-            val intent = Intent(activity, LoginActivity::class.java)
-            startActivity(intent)
-            activity?.finish()
         }
 
         return view
