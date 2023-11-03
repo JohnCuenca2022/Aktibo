@@ -7,7 +7,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.constraintlayout.widget.ConstraintLayout
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 
@@ -15,6 +17,11 @@ import com.google.firebase.ktx.Firebase
 class ExerciseListFragment : Fragment() {
     private lateinit var intensity: String
     private lateinit var region: String
+
+    private lateinit var query_region: String
+    private lateinit var query_intensity: String
+
+    var displayedUI = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,7 +31,6 @@ class ExerciseListFragment : Fragment() {
             intensity = bundle.getString("intensity").toString()
             region = bundle.getString("region").toString()
 
-            // println("$intensity, $region")
         }
     }
 
@@ -32,11 +38,10 @@ class ExerciseListFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_exercise_list, container, false)
 
-        var query_region = ""
-        var query_intensity = ""
+        query_region = ""
+        query_intensity = ""
 
         val textViewTitle = view.findViewById<TextView>(R.id.textViewTitle)
         when (region) {
@@ -66,7 +71,16 @@ class ExerciseListFragment : Fragment() {
             }
         }
 
-        val linearLayout = view.findViewById<LinearLayout>(R.id.scrollContainer)
+        return view
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        displayData()
+    }
+
+    private fun displayData(){
+        val linearLayout = view?.findViewById<LinearLayout>(R.id.scrollContainer)
 
         val db = Firebase.firestore
         db.collection("exercises")
@@ -74,6 +88,11 @@ class ExerciseListFragment : Fragment() {
             .whereEqualTo("intensity", query_intensity)
             .get()
             .addOnSuccessListener { queryDocumentSnapshots ->
+                val viewToRemove = view?.findViewById<ProgressBar>(R.id.progressBar3)
+                if (linearLayout != null) {
+                    linearLayout.removeView(viewToRemove)
+                }
+
                 for (data in queryDocumentSnapshots){
                     val id = data.id
                     val name = data.getString("name").toString()
@@ -92,6 +111,7 @@ class ExerciseListFragment : Fragment() {
                         }
                     }
 
+                    val inflater = LayoutInflater.from(requireContext())
                     val itemLayout = inflater.inflate(R.layout.exercise_item, null)
 
                     val marginLayoutParams = LinearLayout.LayoutParams(
@@ -124,11 +144,11 @@ class ExerciseListFragment : Fragment() {
                         replaceFragmentWithAnimWithData(ExerciseItemFragment(), id)
                     }
 
-                    linearLayout.addView(itemLayout)
+                    if (linearLayout != null) {
+                        linearLayout.addView(itemLayout)
+                    }
                 }
             }
-
-        return view
     }
 
     private fun replaceFragmentWithAnimWithData(fragment: Fragment, exerciseID: String) {

@@ -21,16 +21,39 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
-        android:id="@+id/textViewExerciseName"
-        android:layout_width="match_parent"
+    <com.elyeproj.loaderviewlibrary.LoaderTextView
+        android:id="@+id/textViewExerciseNameLoader"
+        android:layout_width="wrap_content"
+        android:minWidth="160dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:fontFamily="@font/roboto_bold"
         android:gravity="center"
         android:text="Push-Ups"
+        android:textStyle="bold"
         android:textColor="@color/primary"
         android:textSize="22sp"
+        app:width_weight="1"
+        app:height_weight="1"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textViewTitle" />
+
+    <TextView
+        android:id="@+id/textViewExerciseName"
+        android:layout_width="wrap_content"
+        android:minWidth="160dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:fontFamily="@font/roboto_bold"
+        android:gravity="center"
+        android:text="Push-Ups"
+        android:textStyle="bold"
+        android:textColor="@color/primary"
+        android:textSize="22sp"
+        android:visibility="invisible"
+        app:width_weight="1"
+        app:height_weight="1"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textViewTitle" />
@@ -51,6 +74,16 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"/>
+
+        <ProgressBar
+            android:id="@+id/progressBar2"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@+id/videoView"
+            app:layout_constraintTop_toTopOf="@+id/videoView" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <ScrollView
@@ -71,6 +104,19 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+        <com.elyeproj.loaderviewlibrary.LoaderTextView
+            android:id="@+id/textViewRepSetsLoader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/roboto_medium"
+            android:gravity="center|start"
+            android:text="10 repetitions (3 sets)"
+            android:textColor="@color/primary"
+            android:textSize="16sp"
+            app:width_weight="0.6"
+            app:height_weight="1"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"/>
         <TextView
             android:id="@+id/textViewRepSets"
             android:layout_width="match_parent"
@@ -80,6 +126,9 @@
             android:text="10 repetitions (3 sets)"
             android:textColor="@color/primary"
             android:textSize="16sp"
+            android:visibility="gone"
+            app:width_weight="0.6"
+            app:height_weight="1"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent" />
 
@@ -91,7 +140,52 @@
             android:layout_marginTop="16dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/textViewRepSets" />
+            app:layout_constraintTop_toBottomOf="@+id/textViewRepSets" >
+
+            <com.elyeproj.loaderviewlibrary.LoaderTextView
+                android:layout_width="match_parent"
+                android:layout_height="22dp"
+                android:layout_marginBottom="5dp"
+                app:width_weight="1"
+                app:height_weight="1" />
+            <com.elyeproj.loaderviewlibrary.LoaderTextView
+                android:layout_width="match_parent"
+                android:layout_height="22dp"
+                android:layout_marginBottom="5dp"
+                app:width_weight="1"
+                app:height_weight="1" />
+            <com.elyeproj.loaderviewlibrary.LoaderTextView
+                android:layout_width="match_parent"
+                android:layout_height="22dp"
+                android:layout_marginBottom="5dp"
+                app:width_weight="1"
+                app:height_weight="1" />
+            <com.elyeproj.loaderviewlibrary.LoaderTextView
+                android:layout_width="match_parent"
+                android:layout_height="22dp"
+                android:layout_marginBottom="5dp"
+                app:width_weight="1"
+                app:height_weight="1" />
+            <com.elyeproj.loaderviewlibrary.LoaderTextView
+                android:layout_width="match_parent"
+                android:layout_height="22dp"
+                android:layout_marginBottom="5dp"
+                app:width_weight="1"
+                app:height_weight="1" />
+            <com.elyeproj.loaderviewlibrary.LoaderTextView
+                android:layout_width="match_parent"
+                android:layout_height="22dp"
+                android:layout_marginBottom="5dp"
+                app:width_weight="1"
+                app:height_weight="1" />
+            <com.elyeproj.loaderviewlibrary.LoaderTextView
+                android:layout_width="match_parent"
+                android:layout_height="22dp"
+                android:layout_marginBottom="5dp"
+                app:width_weight="1"
+                app:height_weight="1" />
+
+        </LinearLayout>
 
     </LinearLayout>
     </ScrollView>
