@@ -69,6 +69,45 @@
                         android:hint="Write a caption" />
                 </com.google.android.material.textfield.TextInputLayout>
 
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/textWarningCardView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:backgroundTint="#d81a1a"
+                    android:visibility="gone"
+                    app:cardCornerRadius="6dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/caption">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent">
+
+                        <ImageView
+                            android:layout_width="30dp"
+                            android:layout_height="30dp"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginLeft="10dp"
+                            android:src="@drawable/error_icon"/>
+
+                        <TextView
+                            android:id="@+id/textWarningTextView"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="9dp"
+                            android:paddingBottom="10dp"
+                            android:fontFamily="@font/roboto_medium"
+                            android:layout_marginLeft="10dp"
+                            android:text="User Guidelines Violation.\nInappropriate words:"
+                            android:textColor="@color/off_white"
+                            android:textSize="16sp"
+                            android:visibility="visible"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toBottomOf="@+id/imageCardView"/>
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+
                 <TextView
                     android:id="@+id/imageTitleTextView"
                     android:layout_width="match_parent"
@@ -80,7 +119,7 @@
                     android:textColor="@color/primary"
                     android:textSize="16sp"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/caption"/>
+                    app:layout_constraintTop_toBottomOf="@+id/textWarningCardView"/>
 
                 <androidx.cardview.widget.CardView
                     android:id="@+id/imageCardView"
@@ -99,8 +138,19 @@
                         android:id="@+id/newMomentImage"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:src="@drawable/placeholder_image"
-                        android:scaleType="centerCrop"
+                        android:scaleType="centerInside"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent" />
+
+                    <ImageView
+                        android:id="@+id/placeholderImage"
+                        android:layout_width="100dp"
+                        android:layout_height="100dp"
+                        android:src="@drawable/image_icon"
+                        android:scaleType="centerInside"
+                        android:layout_gravity="center"
                         app:layout_constraintEnd_toEndOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
@@ -115,7 +165,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
                     android:backgroundTint="#d81a1a"
-                    android:visibility="visible"
+                    android:visibility="gone"
                     app:cardCornerRadius="6dp"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
@@ -140,7 +190,7 @@
                             android:paddingBottom="10dp"
                             android:fontFamily="@font/roboto_medium"
                             android:layout_marginLeft="10dp"
-                            android:text="User Guideline Violation.\nImage contains:"
+                            android:text="User Guidelines Violation.\nImage contains:"
                             android:textColor="@color/off_white"
                             android:textSize="16sp"
                             android:visibility="visible"
@@ -157,12 +207,25 @@
                     android:layout_marginBottom="30dp"
                     android:text="Create Post"
                     android:textColor="@color/white"
-                    app:backgroundTint="@color/green"
+                    style="@style/MaterialButtonStyleChanging"
                     app:cornerRadius="20dp"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/imageWarningCardView"
                     app:textAllCaps="false" />
+
+                <ProgressBar
+                    android:id="@+id/createNewMomentButtonProgressBar"
+                    style="?android:attr/progressBarStyle"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:elevation="2dp"
+                    android:visibility="gone"
+                    app:layout_constraintTop_toTopOf="@+id/createNewMomentButton"
+                    app:layout_constraintStart_toStartOf="@id/createNewMomentButton"
+                    app:layout_constraintEnd_toEndOf="@+id/createNewMomentButton"
+                    app:layout_constraintBottom_toBottomOf="@+id/createNewMomentButton"/>
+
 
             </androidx.constraintlayout.widget.ConstraintLayout>
 

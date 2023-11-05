@@ -67,5 +67,10 @@
         <item name="android:colorForeground">@color/off_white</item>
     </style>
 
+    <style name="MaterialButtonStyleChanging" parent="Widget.MaterialComponents.Button.UnelevatedButton">
+        <item name="backgroundTint">@color/color_states_materialbutton</item>
+    </style>
+
+
 
 </resources>

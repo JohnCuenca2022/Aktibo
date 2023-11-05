@@ -2,42 +2,41 @@ package com.example.aktibo
 
 import android.Manifest
 import android.app.Activity
-import android.app.Activity.RESULT_OK
 import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
+import android.view.KeyEvent
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.EditText
-import android.widget.ImageButton
 import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.ScrollView
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
-import androidx.core.net.toFile
-import androidx.viewpager.widget.PagerAdapter
-import androidx.viewpager.widget.ViewPager
+import androidx.core.view.KeyEventDispatcher.dispatchKeyEvent
+import com.example.aktibo.LoginActivity.Companion.TAG
 import com.google.android.material.textfield.TextInputEditText
-import kotlinx.coroutines.DelicateCoroutinesApi
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -46,9 +45,9 @@ import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.io.File
+import java.io.ByteArrayOutputStream
 import java.io.InputStream
-import kotlin.coroutines.resumeWithException
+import java.util.UUID
 
 class NewMomentFragment : Fragment() {
 
@@ -57,24 +56,22 @@ class NewMomentFragment : Fragment() {
     private lateinit var imageCardView: CardView
     private lateinit var newMomentImage: ImageView
     private lateinit var newMomentImageUri: Uri
+    private lateinit var placeholderImage: ImageView
 
     private lateinit var imageWarningCardView: CardView
     private lateinit var imageWarningTextView: TextView
 
-    private lateinit var createNewMomentButton: Button
+    private lateinit var textWarningCardView: CardView
+    private lateinit var textWarningTextView: TextView
 
-    var isValid = false
+    private lateinit var createNewMomentButton: Button
+    private lateinit var createNewMomentButtonProgressBar: ProgressBar
 
     val workflow = "wfl_f5yBhhGuUn9BpIyZwaJMZ"
     val apiUser = "1227574749"
     val apiSecret = "NLvWeA9iUfYBqg6rMyx6VsaJXy"
 
     private val MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 456
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -84,9 +81,15 @@ class NewMomentFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_new_moment, container, false)
 
         newMomentCaption = view.findViewById(R.id.newMomentCaption)
+        newMomentCaption.onFocusChangeListener = View.OnFocusChangeListener { view, hasFocus ->
+            if (!hasFocus) {
+                hideTextWarningMessage()
+            }
+        }
 
         imageCardView = view.findViewById(R.id.imageCardView)
         newMomentImage = view.findViewById(R.id.newMomentImage)
+        placeholderImage = view.findViewById(R.id.placeholderImage)
 
         imageCardView.setOnClickListener{
             selectImage(view)
@@ -95,10 +98,14 @@ class NewMomentFragment : Fragment() {
         imageWarningCardView = view.findViewById(R.id.imageWarningCardView)
         imageWarningTextView = view.findViewById(R.id.imageWarningTextView)
 
+        textWarningCardView = view.findViewById(R.id.textWarningCardView)
+        textWarningTextView = view.findViewById(R.id.textWarningTextView)
+
         createNewMomentButton = view.findViewById(R.id.createNewMomentButton)
         createNewMomentButton.setOnClickListener{
             createMoment()
         }
+        createNewMomentButtonProgressBar = view.findViewById(R.id.createNewMomentButtonProgressBar)
 
         return view
     }
@@ -128,7 +135,6 @@ class NewMomentFragment : Fragment() {
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
-        println(requestCode)
         when (requestCode) {
 
             MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE -> {
@@ -151,20 +157,23 @@ class NewMomentFragment : Fragment() {
         if (resultCode == Activity.RESULT_OK) {
             when (requestCode) {
                 PICK_IMAGE_REQUEST -> {
+                    hideImageWarningMessage()
+                    placeholderImage.visibility = View.GONE
+
                     // Handle image selection from gallery
                     val selectedImage = data?.data
                     newMomentImage.setImageURI(selectedImage)
                     if (selectedImage != null) {
                         newMomentImageUri = selectedImage
                     }
-
-                    Toast.makeText(context, selectedImage.toString(), Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
 
-    fun analyzeImage(context: Context, imageUri: Uri, workflow: String, apiUser: String, apiSecret: String) {
+    suspend fun analyzeImage(context: Context, imageUri: Uri, workflow: String, apiUser: String, apiSecret: String): Boolean {
+        val isPassing = CompletableDeferred<Boolean>()
+
         val retrofit = Retrofit.Builder()
             .baseUrl("https://api.sightengine.com/1.0/")
             .addConverterFactory(GsonConverterFactory.create())
@@ -201,25 +210,30 @@ class NewMomentFragment : Fragment() {
 
                             // image has flagged image
                             if (summaryAction == "reject"){
-                                var warningMessage = "User Guideline Violation.\nImage contains: "
+                                var warningMessage = "User Guidelines Violation.\nImage contains:"
                                 summaryReason.forEach { item ->
-                                    val reasonText = "${item.text}, "
-                                    warningMessage += reasonText.removeSuffix(", ")
+                                    val reasonText = " ${item.text},"
+                                    warningMessage += reasonText
                                 }
+                                warningMessage = warningMessage.removeSuffix(",")
                                 imageWarningTextView.text = warningMessage
                                 imageWarningCardView.visibility = View.VISIBLE
+                                isPassing.complete(false)
                             } else {
-                                imageWarningCardView.visibility = View.INVISIBLE
+                                imageWarningCardView.visibility = View.GONE
+                                isPassing.complete(true)
                             }
 
                         } else {
                             Log.e("SightEngine API", "Empty response body")
                             Toast.makeText(requireContext(), "Failed to scan image. Please try again.", Toast.LENGTH_SHORT).show()
+                            isPassing.complete(false)
                         }
                     } else {
                         // Handle the error
                         Log.e("SightEngine API", "Error: ${response.code()}")
                         Toast.makeText(requireContext(), "Failed to scan image. Please try again.", Toast.LENGTH_SHORT).show()
+                        isPassing.complete(false)
                     }
                 }
 
@@ -227,15 +241,18 @@ class NewMomentFragment : Fragment() {
                     // Handle network errors here
                     Log.e("SightEngine API", "Network error: ${t.message}")
                     Toast.makeText(requireContext(), "Network error. Please try again.", Toast.LENGTH_SHORT).show()
+                    isPassing.complete(false)
                 }
             })
         } else {
             Log.e("SightEngine API", "Failed to open InputStream for image URI")
             Toast.makeText(requireContext(), "Failed to scan image. Please try again.", Toast.LENGTH_SHORT).show()
         }
+        return isPassing.await()
     }
 
-    fun checkProfanity(text: String, lang: String, apiKey: String, apiSecret: String) {
+    private suspend fun checkProfanity(text: String, lang: String, apiKey: String, apiSecret: String): Boolean {
+        val isPassing = CompletableDeferred<Boolean>()
 
         val retrofit = Retrofit.Builder()
             .baseUrl("https://api.sightengine.com/1.0/")
@@ -259,44 +276,272 @@ class NewMomentFragment : Fragment() {
 
                         if (profanityMatches.isEmpty()){
                             Log.e("SightEngine API Text Profanity", "no profanity")
-                            isValid = true
+                            isPassing.complete(true)
                         } else {
+                            // text has flagged words
+                            var warningMessage = "User Guidelines Violation.\nInappropriate words:"
                             profanityMatches.forEach { item ->
-                                Log.e("SightEngine API Text Profanity", item.match)
+                                val reasonText = " ${item.match},"
+                                warningMessage += reasonText
+                                println(warningMessage)
                             }
+                            warningMessage = warningMessage.removeSuffix(",")
+
+                            textWarningTextView.text = warningMessage
+                            textWarningCardView.visibility = View.VISIBLE
+
+                            isPassing.complete(false)
                         }
 
                     }
                 } else {
                     Log.e("SightEngine API Text", "Empty response body")
                     Toast.makeText(requireContext(), "Failed to scan text. Please try again.", Toast.LENGTH_SHORT).show()
+                    isPassing.complete(false)
                 }
             }
 
             override fun onFailure(call: Call<SightEngineResponseText>, t: Throwable) {
                 Log.e("SightEngine API Text", "Network error: ${t.message}")
                 Toast.makeText(requireContext(), "Network error. Please try again.", Toast.LENGTH_SHORT).show()
+                isPassing.complete(false)
             }
         })
+
+        return isPassing.await()
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
-    fun createMoment(){
+    private fun hideTextWarningMessage(){
+        val warningMessage = "User Guidelines Violation.\nInappropriate words: "
+        textWarningCardView.visibility = View.GONE
+        textWarningTextView.text = warningMessage
+    }
+
+    private fun hideImageWarningMessage(){
+        val warningMessage = "User Guidelines Violation.\nImage contains: "
+        imageWarningCardView.visibility = View.GONE
+        imageWarningTextView.text = warningMessage
+    }
+
+    private fun disableButton(button: Button) {
+        button.isEnabled = false
+        button.isClickable = false
+        createNewMomentButtonProgressBar.visibility = View.VISIBLE
+    }
+
+    private fun enableButton(button: Button) {
+        button.isEnabled = true
+        button.isClickable = true
+        createNewMomentButtonProgressBar.visibility = View.GONE
+    }
+
+    private fun disableAllInputs(){
+        newMomentCaption.isEnabled = false
+        imageCardView.isEnabled = false
+    }
+
+    private fun enableAllInputs(){
+        newMomentCaption.isEnabled = true
+        imageCardView.isEnabled = true
+    }
+
+    private suspend fun uploadImageToFirebase(imageUri: Uri?): String {
+        val imageSrc = CompletableDeferred<String>()
+
+        val storage = FirebaseStorage.getInstance()
+        val storageRef = storage.reference
+        val currentUser = FirebaseAuth.getInstance().currentUser
+
+        val inputStream = imageUri?.let { context?.contentResolver?.openInputStream(it) }
+        val buffer = ByteArrayOutputStream()
+        val bufferSize = 1024
+        val bufferData = ByteArray(bufferSize)
+        var bytesRead: Int = 0
+        var totalBytes = 0
+
+        while (inputStream?.read(bufferData, 0, bufferSize).also {
+                if (it != null) {
+                    bytesRead = it
+                }
+            } != -1) {
+            buffer.write(bufferData, 0, bytesRead)
+            totalBytes += bytesRead
+
+            // Check if the total size exceeds 3MB (3 * 1024 * 1024 bytes)
+            if (totalBytes > 3 * 1024 * 1024) {
+                // Handle the case where the image size exceeds the limit
+                // You can show an error message to the user
+                Toast.makeText(context, "Image size must not exceed 3MB", Toast.LENGTH_SHORT).show()
+                imageSrc.complete("")
+            }
+        }
+
+        if (imageUri != null) {
+            val imageRef = storageRef.child("moments_images/${currentUser?.uid}/${UUID.randomUUID()}")
+
+            imageRef.putFile(imageUri)
+                .addOnSuccessListener { taskSnapshot ->
+                    // Image upload success
+                    // You can get the download URL here
+                    imageRef.downloadUrl.addOnSuccessListener { uri ->
+                        val imageUrl = uri.toString()
+                        // Handle the URL as needed, e.g., save it to a database
+                        imageSrc.complete(imageUrl)
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    // Handle unsuccessful upload
+                    // You can log an error message or notify the user
+                    Toast.makeText(context, "Failed to Upload Image", Toast.LENGTH_SHORT).show()
+                    imageSrc.complete("")
+                }
+        }
+
+        return imageSrc.await()
+    }
+
+    private fun createMoment(){
+        hideTextWarningMessage()
+        hideImageWarningMessage()
+        disableAllInputs()
+        disableButton(createNewMomentButton)
+
         val text = newMomentCaption.text.toString().trim() // get caption
         if (text == "" && !::newMomentImageUri.isInitialized){ // check if there is no caption and no image
             Toast.makeText(requireContext(), "Write a caption or upload an image", Toast.LENGTH_SHORT).show()
+            enableButton(createNewMomentButton)
+            enableAllInputs()
             return
         }
 
         // has caption and/or image
         Toast.makeText(requireContext(), "Verifying post. Please wait.", Toast.LENGTH_SHORT).show()
 
-        checkProfanity(text, "e", apiUser, apiSecret)
+        CoroutineScope(IO).launch{
 
-        println(isValid)
-        // checkProfanity(text, "tl", apiUser, apiSecret)
-        // analyzeImage(requireContext(),newMomentImageUri,workflow,apiUser,apiSecret)
+            if (text != "") {
+                val isSafeEnglish = async {
+                    checkProfanity(text, "en", apiUser, apiSecret)
+                }.await()
 
+                if (!isSafeEnglish){ // stop if has profanity in English or error happened
+                    withContext(Dispatchers.Main) {
+                        enableButton(createNewMomentButton)
+                        enableAllInputs()
+                    }
+                    return@launch
+                }
+
+                val isSafeFilipino = async {
+                    checkProfanity(text, "tl", apiUser, apiSecret)
+                }.await()
+
+                if (!isSafeFilipino){ // stop if has profanity in Tagalog/Filipino or error happened
+                    withContext(Dispatchers.Main) {
+                        enableButton(createNewMomentButton)
+                        enableAllInputs()
+                    }
+                    return@launch
+                }
+            }
+
+            // image url in the database
+            var imageSrc = ""
+
+            if (::newMomentImageUri.isInitialized) {
+                val isImageSafe = async {
+                    analyzeImage(requireContext(), newMomentImageUri, workflow, apiUser, apiSecret)
+                }.await()
+
+                if (!isImageSafe){ // stop if has profanity in English or error happened
+                    withContext(Dispatchers.Main) {
+                        enableButton(createNewMomentButton)
+                        enableAllInputs()
+                    }
+                    return@launch
+                }else{
+                    imageSrc = async {
+                        uploadImageToFirebase(newMomentImageUri)
+                    }.await()
+
+                    if (imageSrc == ""){ // something failed in image upload
+                        withContext(Dispatchers.Main) {
+                            enableButton(createNewMomentButton)
+                            enableAllInputs()
+                        }
+                        return@launch
+                    }
+                }
+            }
+
+            val db = Firebase.firestore
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            val firestore = FirebaseFirestore.getInstance()
+            val usersCollection = firestore.collection("users")
+            currentUser?.let { user ->
+                val userId = user.uid
+                usersCollection.document(userId).get()
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            val documentSnapshot = task.result
+                            // Check if the document exists and has the required fields
+                            if (documentSnapshot != null && documentSnapshot.exists()) {
+                                val username = documentSnapshot.getString("username")
+                                val userImageSrc = documentSnapshot.getString("userImage")
+
+                                val caption = text
+
+                                val likes = 0
+                                val comments = 0
+                                val commentsList = arrayListOf<Any>()
+
+                                // Add a new document with a generated id.
+                                val data = hashMapOf(
+                                    "username" to username,
+                                    "userImageSrc" to userImageSrc,
+                                    "userID" to userId,
+                                    "caption" to caption,
+                                    "imageSrc" to imageSrc,
+                                    "likes" to likes,
+                                    "comments" to comments,
+                                    "commentsList" to commentsList
+
+                                )
+
+                                db.collection("moments")
+                                    .add(data)
+                                    .addOnSuccessListener { documentReference ->
+                                        Toast.makeText(requireContext(), "New Moment Posted", Toast.LENGTH_SHORT).show()
+                                        enableAllInputs()
+                                        enableButton(createNewMomentButton)
+                                        parentFragmentManager.popBackStack()
+                                        Log.d(TAG, "DocumentSnapshot written with ID: ${documentReference.id}")
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Toast.makeText(requireContext(), "Network error. Please try again", Toast.LENGTH_SHORT).show()
+                                        enableAllInputs()
+                                        enableButton(createNewMomentButton)
+                                        Log.w(TAG, "Error adding document", e)
+                                    }
+
+                            } else {
+                                // Document doesn't exist or doesn't have the required fields
+                                enableAllInputs()
+                                enableButton(createNewMomentButton)
+                                Toast.makeText(requireContext(), "Network error. Please try again", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            // Handle the error
+                            enableAllInputs()
+                            enableButton(createNewMomentButton)
+                            Toast.makeText(requireContext(), "Network error. Please try again", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+            }
+
+        }
     }
+
+
 
 }
