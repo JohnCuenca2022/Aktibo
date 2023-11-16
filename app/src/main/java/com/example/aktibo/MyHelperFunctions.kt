@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.icu.util.Calendar
 import android.net.Uri
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -83,4 +84,23 @@ class MyHelperFunctions {
         notificationManager.cancel(NOTIFICATION_ID)
     }
 
+    fun startOfDay(calendar: Calendar): Calendar {
+        // Set the time to the start of the day
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+
+        return calendar
+    }
+
+    fun endOfDay(calendar: Calendar): Calendar {
+        // Set the time to the end of the day
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+
+        return calendar
+    }
 }

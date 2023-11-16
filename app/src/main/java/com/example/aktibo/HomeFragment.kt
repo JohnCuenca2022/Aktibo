@@ -1,13 +1,11 @@
 package com.example.aktibo
 
 import android.Manifest
-import android.animation.ObjectAnimator
 import android.app.Activity
 import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.ContentValues
 import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
@@ -27,9 +25,9 @@ import android.view.ViewGroup
 import android.view.animation.AnimationUtils
 import android.widget.ImageButton
 import android.widget.TextView
-import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -49,7 +47,6 @@ import com.github.mikephil.charting.formatter.ValueFormatter
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.fitness.Fitness
 import com.google.android.gms.fitness.FitnessOptions
-import com.google.android.gms.fitness.data.DataSource
 import com.google.android.gms.fitness.data.DataType
 import com.google.android.gms.fitness.data.Field
 import com.google.android.gms.fitness.request.DataReadRequest
@@ -62,10 +59,6 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.CompletableDeferred
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -74,7 +67,6 @@ import kotlin.math.sqrt
 
 class HomeFragment : Fragment() {
 
-    private lateinit var auth: FirebaseAuth
     private val MY_PERMISSIONS_REQUEST_ACTIVITY_RECOGNITION = 123
     private val fitnessOptions = FitnessOptions.builder()
         .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
@@ -93,7 +85,6 @@ class HomeFragment : Fragment() {
     private lateinit var targetView: View
     private lateinit var textView: TextView
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -146,9 +137,9 @@ class HomeFragment : Fragment() {
         }
 
         // bmi indicator
-        siblingView = view.findViewById<View>(R.id.bmi_slider)
-        targetView = view.findViewById<View>(R.id.bmi_indicator)
-        textView = view.findViewById<TextView>(R.id.textView2)
+        siblingView = view.findViewById(R.id.bmi_slider)
+        targetView = view.findViewById(R.id.bmi_indicator)
+        textView = view.findViewById(R.id.textView2)
 
         weightGoalButton = view.findViewById(R.id.weightGoalButton)
         weightGoalButton.setOnClickListener{
@@ -164,14 +155,25 @@ class HomeFragment : Fragment() {
 
         val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
 
-        if (!GoogleSignIn.hasPermissions(account, fitnessOptions)) {
+        if (!GoogleSignIn.hasPermissions(account, fitnessOptions)) { // does not have permissions
             GoogleSignIn.requestPermissions(
                 this, // your activity
                 819, // e.g. 1
                 account,
                 fitnessOptions)
         } else {
-            accessGoogleFit()
+            checkAndRequestActivityRecognitionPermission() // record steps
+            readSteps()
+
+            val helper = MyHelperFunctions()
+            val today = Calendar.getInstance()
+            val endDate = helper.endOfDay(today)
+
+            val daysAgo = Calendar.getInstance()
+            daysAgo.add(Calendar.DAY_OF_YEAR, -6)
+            val startDate = helper.startOfDay(daysAgo)
+
+            getDailyStepCount(requireContext(), startDate.time, endDate.time)
         }
 
         //schedule notifications
@@ -209,16 +211,13 @@ class HomeFragment : Fragment() {
         fragmentTransaction.commit()
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         // get user
         val user = Firebase.auth.currentUser
         user?.let {
-            val uid = it.uid // user ID
-
-            // get user data
+            val uid = it.uid
             val db = Firebase.firestore
             val docRef = db.collection("users").document(uid)
             docRef.get()
@@ -243,15 +242,26 @@ class HomeFragment : Fragment() {
                 }
         }
 
-
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (resultCode) {
             Activity.RESULT_OK -> when (requestCode) {
-                819 -> accessGoogleFit()
+                819 -> {
+                    checkAndRequestActivityRecognitionPermission() // record steps
+                    readSteps()
+
+                    val helper = MyHelperFunctions()
+                    val today = Calendar.getInstance()
+                    val endDate = helper.endOfDay(today)
+
+                    val daysAgo = Calendar.getInstance()
+                    daysAgo.add(Calendar.DAY_OF_YEAR, -6)
+                    val startDate = helper.startOfDay(daysAgo)
+
+                    getDailyStepCount(requireContext(), startDate.time, endDate.time)
+                }
                 else -> {
                     // Result wasn't from Google Fit
                 }
@@ -260,50 +270,6 @@ class HomeFragment : Fragment() {
                 // Permission not granted
             }
         }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun accessGoogleFit() {
-        val end = LocalDateTime.now()
-        val start = end.minusYears(1)
-        val endSeconds = end.atZone(ZoneId.systemDefault()).toEpochSecond()
-        val startSeconds = start.atZone(ZoneId.systemDefault()).toEpochSecond()
-
-        val readRequest = DataReadRequest.Builder()
-            .aggregate(DataType.AGGREGATE_STEP_COUNT_DELTA)
-            .setTimeRange(startSeconds, endSeconds, TimeUnit.SECONDS)
-            .bucketByTime(1, TimeUnit.DAYS)
-            .build()
-        val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
-        Fitness.getHistoryClient(requireContext(), account)
-            .readData(readRequest)
-            .addOnSuccessListener { response ->
-                // Use response data here
-                Log.i(TAG, "OnSuccess()")
-                checkAndRequestActivityRecognitionPermission()
-                readSteps()
-
-                val today = Calendar.getInstance()
-                today.set(Calendar.HOUR_OF_DAY, 23)
-                today.set(Calendar.MINUTE, 59)
-                today.set(Calendar.SECOND, 59)
-                today.set(Calendar.MILLISECOND, 999)
-
-                val todayDate = Date(today.timeInMillis)
-
-                val start = Calendar.getInstance()
-                start.set(Calendar.HOUR_OF_DAY, 0)
-                start.set(Calendar.MINUTE, 0)
-                start.set(Calendar.SECOND, 0)
-                start.set(Calendar.MILLISECOND, 0)
-
-                start.add(Calendar.DAY_OF_MONTH, -6)
-                val startDate = Date(start.timeInMillis)
-
-                getDailyStepCount(requireContext(), startDate, todayDate)
-
-            }
-            .addOnFailureListener { e -> Log.d(TAG, "OnFailure()", e) }
     }
 
     private fun recordSteps() {
@@ -318,7 +284,6 @@ class HomeFragment : Fragment() {
 
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun readSteps() {
         val start = Calendar.getInstance()
         start.set(Calendar.HOUR_OF_DAY, 0)
@@ -345,7 +310,8 @@ class HomeFragment : Fragment() {
 
         val textViewWeek = view?.findViewById<TextView>(R.id.textViewWeek)
         if (textViewWeek != null) {
-            textViewWeek.setText("$startDateFormatted - $endDateFormatted")
+            val text = "$startDateFormatted - $endDateFormatted"
+            textViewWeek.text = text
         }
 
         val googleSignInAccount =
@@ -372,9 +338,9 @@ class HomeFragment : Fragment() {
 
                             var hasRecord = false
                             for (stepsRecord in stepCountsMap) {
-                                val date = stepsRecord["date"] as Date
+                                val recordDate = stepsRecord["date"] as Date
 
-                                if (isSameDate(realDate, date)) {
+                                if (isSameDate(realDate, recordDate)) {
                                     val currentSteps = stepsRecord["steps"] as Int
                                     stepsRecord["steps"] = currentSteps + stepCount
                                     hasRecord = true
@@ -489,11 +455,15 @@ class HomeFragment : Fragment() {
                             val stepCount = dataPoint.getValue(Field.FIELD_STEPS).asInt()
                             val realDate = Date(date)
 
+                            println("*********************************")
+                            println(stepCount)
+                            println(realDate.toString())
+
                             var hasRecord = false
                             for (stepsRecord in stepCountsMap){
-                                val date = stepsRecord["date"] as Date
+                                val recordDate = stepsRecord["date"] as Date
 
-                                if (isSameDate(realDate, date)){
+                                if (isSameDate(realDate, recordDate)){
                                     val currentSteps = stepsRecord["steps"] as Int
                                     stepsRecord["steps"] = currentSteps + stepCount
                                     hasRecord = true
@@ -578,7 +548,7 @@ class HomeFragment : Fragment() {
         set.color = Color.rgb(99,169,31)
 
         val dataSet = BarData(set)
-        dataSet.barWidth = 0.9f; // set custom bar width
+        dataSet.barWidth = 0.9f // set custom bar width
         dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
 
         // disable dragging/zooming
@@ -610,16 +580,16 @@ class HomeFragment : Fragment() {
         xAxis.valueFormatter = formatter
 
         //Disable Legend
-        val legend = barChart.getLegend()
+        val legend = barChart.legend
         legend.isEnabled = false
 
         //Disable Description
-        val description = barChart.getDescription()
+        val description = barChart.description
         description.isEnabled = false
 
         //Animation
-        barChart.animateY(500, Easing.EaseInSine);
-        barChart.animateX(500, Easing.EaseInSine);
+        barChart.animateY(500, Easing.EaseInSine)
+        barChart.animateX(500, Easing.EaseInSine)
 
         // setting the data
         barChart.data = dataSet
@@ -749,8 +719,8 @@ class HomeFragment : Fragment() {
         description.isEnabled = false
 
         //Animation
-        lineChart.animateY(500, Easing.EaseInSine);
-        lineChart.animateX(500, Easing.EaseInSine);
+        lineChart.animateY(500, Easing.EaseInSine)
+        lineChart.animateX(500, Easing.EaseInSine)
 
         // setting the data
         lineChart.data = dataSet
@@ -871,7 +841,6 @@ class HomeFragment : Fragment() {
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
-        println(requestCode)
         when (requestCode) {
             MY_PERMISSIONS_REQUEST_ACTIVITY_RECOGNITION -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -1134,6 +1103,20 @@ class HomeFragment : Fragment() {
         }
 
         with(context.let { NotificationManagerCompat.from(it) }) {
+            if (ActivityCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return
+            }
             this.notify(id, builder.build())
         }
 

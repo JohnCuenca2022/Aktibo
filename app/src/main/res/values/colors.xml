@@ -12,6 +12,7 @@
     <color name="off_white">#F0F7EE</color>
     <color name="primary">#191919</color>
     <color name="secondary">#F0F7EE</color>
+    <color name="fainted_primary">#9E9E9E</color>
     <color name="transparent">#00000000</color>
     <color name="mtrl_textinput_default_box_stroke_color" tools:override="true">#FF000000</color>
 </resources>

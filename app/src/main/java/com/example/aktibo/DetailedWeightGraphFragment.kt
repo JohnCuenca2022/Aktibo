@@ -447,7 +447,7 @@ class DetailedWeightGraphFragment : Fragment() {
 
     private fun saveFile(){
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            != PackageManager.PERMISSION_GRANTED
+            != PackageManager.PERMISSION_GRANTED && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
         ) {
             // Permission is not granted, request it
             ActivityCompat.requestPermissions(
@@ -463,7 +463,7 @@ class DetailedWeightGraphFragment : Fragment() {
 
             val options = arrayOf("Save as Excel", "Save as PDF")
             val builder = AlertDialog.Builder(requireContext())
-            builder.setTitle("Select Image")
+            builder.setTitle("Select File Type")
             builder.setItems(options) { _, which ->
                 when (which) {
                     0 -> {

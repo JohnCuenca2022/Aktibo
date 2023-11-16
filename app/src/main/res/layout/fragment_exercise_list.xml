@@ -15,7 +15,7 @@
         android:alpha="0.7"
         android:fontFamily="@font/roboto_bold"
         android:gravity="center"
-        android:text="Exercise Routines"
+        android:text="Exercises"
         android:textColor="@color/primary"
         android:textSize="15sp"
         app:layout_constraintEnd_toEndOf="parent"
@@ -62,6 +62,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
                     android:orientation="vertical">
 
                     <ProgressBar

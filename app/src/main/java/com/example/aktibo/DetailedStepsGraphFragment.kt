@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.icu.text.SimpleDateFormat
+import android.icu.util.Calendar
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
@@ -56,7 +57,6 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -90,7 +90,7 @@ class DetailedStepsGraphFragment : Fragment() {
 
         // Set/placeholder date
         val firstDate = Calendar.getInstance()
-        firstDate.add(Calendar.DAY_OF_MONTH, -7)
+        firstDate.add(Calendar.DAY_OF_MONTH, -6)
 
         // Set up the date picker for range selection
         val builder = MaterialDatePicker.Builder.dateRangePicker()
@@ -134,39 +134,51 @@ class DetailedStepsGraphFragment : Fragment() {
             val startDate = selection.first
             val endDate = selection.second
 
-            val dateFormat = SimpleDateFormat("MMM d, yyyy")
             val start = Date(startDate)
-            val startFormatted  = dateFormat.format(start)
             val end = Date(endDate)
+
+            // show user the chosen dates
+            val dateFormat = SimpleDateFormat("MMM d, yyyy")
+            val startFormatted  = dateFormat.format(start)
             val endFormatted  = dateFormat.format(end)
 
             val linearLayout = view.findViewById<LinearLayout>(R.id.linearLayout)
-
             val textView2 = view.findViewById<TextView>(R.id.textView2)
             textView2.text = startFormatted
-
             val textView4 = view.findViewById<TextView>(R.id.textView4)
             textView4.text = endFormatted
-
             linearLayout.visibility = View.VISIBLE
 
-            getDailyStepCount(requireContext(), Date(startDate), Date(endDate))
+            // get accurate time
+            val helper = MyHelperFunctions()
+
+            val startDateCalendar = Calendar.getInstance()
+            startDateCalendar.timeInMillis = startDate
+            val realStartDate = helper.startOfDay(startDateCalendar)
+
+            val endDateCalendar = Calendar.getInstance()
+            endDateCalendar.timeInMillis = endDate
+            val realEndDate = helper.endOfDay(endDateCalendar)
+
+            getDailyStepCount(requireContext(), realStartDate.time, realEndDate.time)
+
+            //getDailyStepCount(requireContext(), startDateCalendar.time, endDateCalendar.time)
         }
 
         // initialize barChart
         barChart = view.findViewById(R.id.barChart)
 
-        val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
-
-        if (!GoogleSignIn.hasPermissions(account, fitnessOptions)) {
-            GoogleSignIn.requestPermissions(
-                this, // your activity
-                819, // e.g. 1
-                account,
-                fitnessOptions)
-        } else {
-            accessGoogleFit()
-        }
+//        val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
+//
+//        if (!GoogleSignIn.hasPermissions(account, fitnessOptions)) {
+//            GoogleSignIn.requestPermissions(
+//                this, // your activity
+//                819, // e.g. 1
+//                account,
+//                fitnessOptions)
+//        } else {
+//            accessGoogleFit()
+//        }
 
         val generateReportButton = view.findViewById<ImageButton>(R.id.generateReportButton)
         generateReportButton.setOnClickListener{
@@ -221,6 +233,10 @@ class DetailedStepsGraphFragment : Fragment() {
                             val stepCount = dataPoint.getValue(Field.FIELD_STEPS).asInt()
                             val realDate = Date(date)
 
+                            println("*********************************")
+                            println(stepCount)
+                            println(realDate.toString())
+
                             var hasRecord = false
                             for (stepsRecord in stepCountsMap){
                                 val date = stepsRecord["date"] as Date
@@ -246,7 +262,7 @@ class DetailedStepsGraphFragment : Fragment() {
                 }
             }
 
-            val firstDay = android.icu.util.Calendar.getInstance()
+            val firstDay = Calendar.getInstance()
 
             firstDay.time = startDate
 
@@ -262,7 +278,7 @@ class DetailedStepsGraphFragment : Fragment() {
                     }
                 }
                 if (hasRecord){
-                    firstDay.add(android.icu.util.Calendar.DAY_OF_MONTH, 1)
+                    firstDay.add(Calendar.DAY_OF_MONTH, 1)
                     continue
                 }
 
@@ -273,7 +289,7 @@ class DetailedStepsGraphFragment : Fragment() {
 
                 stepCountsMap.add(newRecord)
 
-                firstDay.add(android.icu.util.Calendar.DAY_OF_MONTH, 1)
+                firstDay.add(Calendar.DAY_OF_MONTH, 1)
             }
 
             // sort by date
@@ -286,18 +302,18 @@ class DetailedStepsGraphFragment : Fragment() {
     }
 
     fun isSameDate(firstDate: Date, secondDate: Date): Boolean {
-        val firstDateCalendar = android.icu.util.Calendar.getInstance()
+        val firstDateCalendar = Calendar.getInstance()
         firstDateCalendar.time = firstDate
 
-        val secondDateCalendar = android.icu.util.Calendar.getInstance()
+        val secondDateCalendar = Calendar.getInstance()
         secondDateCalendar.time = secondDate
 
-        return (firstDateCalendar.get(android.icu.util.Calendar.YEAR) == secondDateCalendar.get(
-            android.icu.util.Calendar.YEAR) &&
-                firstDateCalendar.get(android.icu.util.Calendar.MONTH) == secondDateCalendar.get(
-            android.icu.util.Calendar.MONTH) &&
-                firstDateCalendar.get(android.icu.util.Calendar.DAY_OF_MONTH) == secondDateCalendar.get(
-            android.icu.util.Calendar.DAY_OF_MONTH))
+        return (firstDateCalendar.get(Calendar.YEAR) == secondDateCalendar.get(
+            Calendar.YEAR) &&
+                firstDateCalendar.get(Calendar.MONTH) == secondDateCalendar.get(
+            Calendar.MONTH) &&
+                firstDateCalendar.get(Calendar.DAY_OF_MONTH) == secondDateCalendar.get(
+            Calendar.DAY_OF_MONTH))
     }
 
     private fun updateChart(dailyStepCounts: ArrayList<MutableMap<String, Any>>) {
@@ -470,7 +486,7 @@ class DetailedStepsGraphFragment : Fragment() {
 
     private fun saveFile(){
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            != PackageManager.PERMISSION_GRANTED
+            != PackageManager.PERMISSION_GRANTED && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
         ) {
             // Permission is not granted, request it
             ActivityCompat.requestPermissions(
@@ -486,7 +502,7 @@ class DetailedStepsGraphFragment : Fragment() {
 
             val options = arrayOf("Save as Excel", "Save as PDF")
             val builder = AlertDialog.Builder(requireContext())
-            builder.setTitle("Select Image")
+            builder.setTitle("Select File Type")
             builder.setItems(options) { _, which ->
                 when (which) {
                     0 -> {

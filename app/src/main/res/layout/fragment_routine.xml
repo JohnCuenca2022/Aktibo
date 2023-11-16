@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".RoutineFragment">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/routineNameGenerator"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageButton
+            android:id="@+id/deleteRoutineImageButton"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:background="@color/transparent"
+            android:src="@drawable/trash_icon"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="10dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"/>
+
+        <TextView
+            android:id="@+id/textViewRoutineName"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginTop="20dp"
+            android:fontFamily="@font/roboto_bold"
+            android:gravity="center"
+            android:text="My Routine"
+            android:textColor="@color/primary"
+            android:textSize="20sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageButton
+            android:id="@+id/editRoutineNameImageButton"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:background="@color/transparent"
+            android:src="@drawable/trash_icon"
+            app:layout_constraintStart_toEndOf="@+id/textViewRoutineName"
+            app:layout_constraintTop_toTopOf="@+id/textViewRoutineName"
+            app:layout_constraintBottom_toBottomOf="@+id/textViewRoutineName"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scrollbars="none"
+        android:layout_marginBottom="20dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/routineNameGenerator">
+
+        <LinearLayout
+            android:id="@+id/exercisesContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:orientation="vertical">
+
+            <ProgressBar
+                android:id="@+id/progressBar2"
+                style="?android:attr/progressBarStyle"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:layout_gravity="center"/>
+
+        </LinearLayout>
+
+
+    </ScrollView>
+
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
