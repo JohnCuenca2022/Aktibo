@@ -48,26 +48,33 @@ class NotificationsFragment : Fragment() {
 
                         val mapArray = document.get("notifications") as? List<Map<String, Any>>
                         if (mapArray != null) {
-                            for (map in mapArray) {
-                                val presetView: View =
-                                    LayoutInflater.from(requireActivity())
-                                        .inflate(R.layout.notification_item, null)
-                                val params =
-                                    LinearLayout.LayoutParams(
-                                        LinearLayout.LayoutParams.MATCH_PARENT,
-                                        LinearLayout.LayoutParams.WRAP_CONTENT
-                                    )
-                                params.setMargins(0, 0, 0, 20);
-                                presetView.layoutParams = params
-                                val presetTitle =
-                                    presetView.findViewById<TextView>(R.id.notificationHeader)
-                                val timeDiff = getTimeAgoFromTimestamp(map["time"] as Timestamp)
-                                presetTitle.text = timeDiff
-                                val message =
-                                    presetView.findViewById<TextView>(R.id.notificationBody)
-                                message.text = map["message"].toString()
-                                scrollContainer.addView(presetView)
+                            if (mapArray.isEmpty()){
+                                val textViewMessage = view.findViewById<TextView>(R.id.textViewMessage)
+                                textViewMessage.visibility = View.VISIBLE
+                            } else {
+                                val mapArrayReversed = mapArray.reversed()
+                                for (map in mapArrayReversed) {
+                                    val presetView: View =
+                                        LayoutInflater.from(requireActivity())
+                                            .inflate(R.layout.notification_item, null)
+                                    val params =
+                                        LinearLayout.LayoutParams(
+                                            LinearLayout.LayoutParams.MATCH_PARENT,
+                                            LinearLayout.LayoutParams.WRAP_CONTENT
+                                        )
+                                    params.setMargins(0, 0, 0, 20);
+                                    presetView.layoutParams = params
+                                    val presetTitle =
+                                        presetView.findViewById<TextView>(R.id.notificationHeader)
+                                    val timeDiff = getTimeAgoFromTimestamp(map["time"] as Timestamp)
+                                    presetTitle.text = timeDiff
+                                    val message =
+                                        presetView.findViewById<TextView>(R.id.notificationBody)
+                                    message.text = map["message"].toString()
+                                    scrollContainer.addView(presetView)
+                                }
                             }
+
                         }
 
                     } else {

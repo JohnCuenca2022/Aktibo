@@ -19,6 +19,11 @@
         <item name="strokeColor">@color/black</item>
     </style>
 
+    <style name="CustomMaterialButtonFood" parent="Widget.MaterialComponents.Button">
+        <item name="android:backgroundTint">@color/off_white</item>
+        <item name="strokeColor">@color/green</item>
+    </style>
+
     <style name="circularDeterminateProgressBarGreen" parent="Widget.MaterialComponents.CircularProgressIndicator">
         <item name="android:indeterminateOnly">false</item>
         <item name="trackCornerRadius">20dp</item>

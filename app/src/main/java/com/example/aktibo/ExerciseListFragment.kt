@@ -5,6 +5,7 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -80,7 +81,7 @@ class ExerciseListFragment : Fragment() {
     }
 
     private fun displayData(){
-        val linearLayout = view?.findViewById<LinearLayout>(R.id.scrollContainer)
+        val linearLayout = view?.findViewById<LinearLayout>(R.id.exercisesContainer)
 
         val db = Firebase.firestore
         db.collection("exercises")
@@ -88,7 +89,7 @@ class ExerciseListFragment : Fragment() {
             .whereEqualTo("intensity", query_intensity)
             .get()
             .addOnSuccessListener { queryDocumentSnapshots ->
-                val viewToRemove = view?.findViewById<ProgressBar>(R.id.progressBar3)
+                val viewToRemove = view?.findViewById<ProgressBar>(R.id.progressBar2)
                 if (linearLayout != null) {
                     linearLayout.removeView(viewToRemove)
                 }
@@ -131,13 +132,18 @@ class ExerciseListFragment : Fragment() {
 
                     val exerciseInfo = itemLayout.findViewById<TextView>(R.id.exerciseInfo)
                     if (containsOnlyDigits(reps_duration)){
-                        exerciseInfo.text = "${reps_duration} reps - ${sets} sets\nEst.: ${est_time}"
+                        exerciseInfo.text = "${reps_duration} reps - ${sets} sets\nEst.: ${replaceTimeUnits(est_time)}"
                     } else {
-                        exerciseInfo.text = "${reps_duration}\n${sets} sets\nEst.: ${est_time}"
+                        exerciseInfo.text = "${replaceTimeUnits(reps_duration)}\n${sets} sets\nEst.: ${replaceTimeUnits(est_time)}"
                     }
 
                     val exerciseTags = itemLayout.findViewById<TextView>(R.id.exerciseTags)
                     exerciseTags.text = tagsString
+
+                    val addToRoutineButton = itemLayout.findViewById<ImageButton>(R.id.addToRoutineButton)
+                    addToRoutineButton.setOnClickListener{
+                        println(id)
+                    }
 
                     val layout = itemLayout.findViewById<LinearLayout>(R.id.layout)
                     layout.setOnClickListener{
@@ -149,6 +155,13 @@ class ExerciseListFragment : Fragment() {
                     }
                 }
             }
+    }
+
+    fun replaceTimeUnits(input: String): String {
+        var result = input
+        result = result.replace("minute", "min", ignoreCase = true)
+        result = result.replace("seconds", "sec", ignoreCase = true)
+        return result
     }
 
     private fun replaceFragmentWithAnimWithData(fragment: Fragment, exerciseID: String) {

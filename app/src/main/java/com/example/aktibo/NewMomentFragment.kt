@@ -26,6 +26,7 @@ import androidx.core.view.KeyEventDispatcher.dispatchKeyEvent
 import com.example.aktibo.LoginActivity.Companion.TAG
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -504,7 +505,8 @@ class NewMomentFragment : Fragment() {
                                     "imageSrc" to imageSrc,
                                     "likes" to likes,
                                     "comments" to comments,
-                                    "commentsList" to commentsList
+                                    "commentsList" to commentsList,
+                                    "datePosted" to FieldValue.serverTimestamp()
 
                                 )
 
