@@ -6,6 +6,7 @@ import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.icu.util.Calendar
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -25,6 +26,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.KeyEventDispatcher.dispatchKeyEvent
 import com.example.aktibo.LoginActivity.Companion.TAG
 import com.google.android.material.textfield.TextInputEditText
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -489,6 +491,24 @@ class NewMomentFragment : Fragment() {
                             if (documentSnapshot != null && documentSnapshot.exists()) {
                                 val username = documentSnapshot.getString("username")
                                 val userImageSrc = documentSnapshot.getString("userImage")
+                                val momentsData = documentSnapshot.get("posts")as? ArrayList<Map<Any, Any>> ?: ArrayList()
+
+                                var postsToday = 0
+                                for (moment in momentsData){
+                                    val date = moment["datePosted"] as Timestamp
+                                    val today = Calendar.getInstance()
+                                    if (isSameDate(date,today)){
+                                        postsToday += 1
+                                    }
+                                }
+
+                                if (postsToday >= 3){
+                                    Toast.makeText(requireContext(), "Post Limit Exceeded. Please try again tomorrow.", Toast.LENGTH_SHORT).show()
+                                    enableAllInputs()
+                                    enableButton(createNewMomentButton)
+                                    parentFragmentManager.popBackStack()
+                                    return@addOnCompleteListener
+                                }
 
                                 val caption = text
 
@@ -514,6 +534,15 @@ class NewMomentFragment : Fragment() {
                                     .add(data)
                                     .addOnSuccessListener { documentReference ->
                                         Toast.makeText(requireContext(), "New Moment Posted", Toast.LENGTH_SHORT).show()
+
+                                        val momentData = hashMapOf(
+                                            "momentID" to documentReference.id,
+                                            "datePosted" to Timestamp.now(),
+                                        )
+
+                                        val userRef = db.collection("users").document(userId)
+                                        userRef.update("posts", FieldValue.arrayUnion(momentData))
+
                                         enableAllInputs()
                                         enableButton(createNewMomentButton)
                                         parentFragmentManager.popBackStack()
@@ -544,6 +573,13 @@ class NewMomentFragment : Fragment() {
         }
     }
 
+    fun isSameDate(timestamp: Timestamp, calendar: Calendar): Boolean {
+        val firebaseDate = Calendar.getInstance()
+        firebaseDate.time = timestamp.toDate()
 
+        return (calendar.get(Calendar.YEAR) == firebaseDate.get(Calendar.YEAR) &&
+                calendar.get(Calendar.MONTH) == firebaseDate.get(Calendar.MONTH) &&
+                calendar.get(Calendar.DAY_OF_MONTH) == firebaseDate.get(Calendar.DAY_OF_MONTH))
+    }
 
 }

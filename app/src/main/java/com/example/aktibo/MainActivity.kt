@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -27,6 +28,8 @@ class MainActivity : AppCompatActivity() {
     lateinit var bottomNavigation: BottomNavigationView
     private var doubleBackToExitPressedOnce = false
 
+    private val PREFS_NAME = "MyPrefsFile"
+    private val PREF_KEY_SHOW_DIALOG = "showDialog"
 
     val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth: FirebaseAuth ->
         val user: FirebaseUser? = firebaseAuth.currentUser
@@ -69,7 +72,14 @@ class MainActivity : AppCompatActivity() {
                 R.id.home -> replaceFragment(HomeFragment())
                 R.id.food -> replaceFragment(FoodFragment())
                 R.id.exercise -> replaceFragment(ExerciseFragment())
-                R.id.moments -> replaceFragment(MomentsFragment())
+                R.id.moments -> {
+                    // Check if the dialog should be shown
+                    if (shouldShowDialog()) {
+                        replaceFragment(TermsOfServiceFragment())
+                    } else {
+                        replaceFragment(MomentsFragment())
+                    }
+                }
                 R.id.notifications -> replaceFragment(NotificationsFragment())
             }
             true
@@ -88,6 +98,16 @@ class MainActivity : AppCompatActivity() {
         scheduleNotification(getTriggerTime(20, 0),
             "Good Evening!", "Remember to record your evening meal.", "evening")
 
+    }
+
+    fun navigationInterface(navItem: Int){
+        when (navItem) {
+            1 -> bottomNavigation.selectedItemId = R.id.home
+            2 -> bottomNavigation.selectedItemId = R.id.food
+            3 -> bottomNavigation.selectedItemId = R.id.exercise
+            4 -> bottomNavigation.selectedItemId = R.id.moments
+            5 -> bottomNavigation.selectedItemId = R.id.notifications
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -207,6 +227,19 @@ class MainActivity : AppCompatActivity() {
         }
 
         super.onBackPressed()
+    }
+
+    // Terms of Service
+    private fun shouldShowDialog(): Boolean {
+        val prefs: SharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(PREF_KEY_SHOW_DIALOG, true)
+    }
+
+    private fun resetPreferences() {
+        val prefs: SharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val editor = prefs.edit()
+        editor.clear() // This will remove all preferences
+        editor.apply()
     }
 
 }

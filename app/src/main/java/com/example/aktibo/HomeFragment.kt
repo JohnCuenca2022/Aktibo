@@ -3,7 +3,6 @@ package com.example.aktibo
 import android.Manifest
 import android.app.Activity
 import android.content.ContentValues.TAG
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -11,6 +10,9 @@ import android.icu.text.SimpleDateFormat
 import android.icu.util.Calendar
 import android.os.Build
 import android.os.Bundle
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.style.ForegroundColorSpan
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -19,16 +21,19 @@ import android.view.animation.AnimationUtils
 import android.widget.ImageButton
 import android.widget.TextView
 import androidx.annotation.RequiresApi
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.github.mikephil.charting.animation.Easing
 import com.github.mikephil.charting.charts.BarChart
+import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.AxisBase
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.BarData
 import com.github.mikephil.charting.data.BarDataSet
 import com.github.mikephil.charting.data.BarEntry
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.fitness.Fitness
@@ -38,7 +43,12 @@ import com.google.android.gms.fitness.data.DataType
 import com.google.android.gms.fitness.data.Field
 import com.google.android.gms.fitness.request.DataReadRequest
 import com.google.android.material.progressindicator.CircularProgressIndicator
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -57,6 +67,13 @@ class HomeFragment : Fragment() {
         .build()
     private lateinit var barChart: BarChart
     private lateinit var stepsMore: ImageButton
+
+    private lateinit var lineChart: LineChart
+    private lateinit var weightMore: ImageButton
+
+    private lateinit var siblingView: View
+    private lateinit var targetView: View
+    private lateinit var textView: TextView
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreateView(
@@ -81,8 +98,11 @@ class HomeFragment : Fragment() {
             imageButtonAccount.startAnimation(fadeIn)
         }
 
+        // initialize barChart
+        barChart = view.findViewById(R.id.barChart)
+
         // transition to more detailed steps graph
-        val stepsMore = view.findViewById<ImageButton>(R.id.stepsMore)
+        stepsMore = view.findViewById(R.id.stepsMore)
         stepsMore.setOnClickListener {
             // Apply fadeOut animation when pressed
             stepsMore.startAnimation(fadeOut)
@@ -93,8 +113,25 @@ class HomeFragment : Fragment() {
             stepsMore.startAnimation(fadeIn)
         }
 
-        // initialize barChart
-        barChart = view.findViewById(R.id.barChart)
+        // initialize lineChart
+        lineChart = view.findViewById(R.id.lineChart)
+
+        weightMore = view.findViewById(R.id.weightMore)
+        weightMore.setOnClickListener{
+            // Apply fadeOut animation when pressed
+            stepsMore.startAnimation(fadeOut)
+
+            replaceFragmentWithAnim(DetailedStepsGraphFragment())
+
+            // Apply fadeIn animation when released
+            stepsMore.startAnimation(fadeIn)
+        }
+
+        // bmi indicator
+        siblingView = view.findViewById<View>(R.id.bmi_slider)
+        targetView = view.findViewById<View>(R.id.bmi_indicator)
+        textView = view.findViewById<TextView>(R.id.textView2)
+
 
         val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
 
@@ -129,13 +166,36 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // get user
+        val user = Firebase.auth.currentUser
+        user?.let {
+            val uid = it.uid // user ID
 
+            // get user data
+            val db = Firebase.firestore
+            val docRef = db.collection("users").document(uid)
+            docRef.get()
+                .addOnSuccessListener { document ->
+                    if (document != null) {
 
-        // Example data (replace this with your own data)
-        val inputData = intArrayOf(25, 123, 400, 87)
+                        // Weight Chart
+                        updateWeightChart(document)
 
-        // Create a function to update the chart with the provided data
-//        updateChart(inputData)
+                        // BMI Indicator
+                        val weight = document.getDouble("weight")?: 1.0
+                        val height = document.getDouble("height")?: 1.0
+                        showBMI(weight, height)
+
+                        Log.d(TAG, "DocumentSnapshot data: ${document.data}")
+                    } else {
+                        Log.d(TAG, "No such document")
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    Log.d(TAG, "get failed with ", exception)
+                }
+        }
+
 
     }
 
@@ -268,7 +328,7 @@ class HomeFragment : Fragment() {
                             Log.i(TAG,stepCount.toString())
 
                         }
-                        updateChart(intArray, dayArray)
+                        updateStepsChart(intArray, dayArray)
                     }
                 }
             }
@@ -277,7 +337,7 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun updateChart(data: IntArray, days: Array<String>) {
+    private fun updateStepsChart(data: IntArray, days: Array<String>) {
         val entries = ArrayList<BarEntry>()
 
         // Create data entries for the bar chart from the input data
@@ -337,6 +397,178 @@ class HomeFragment : Fragment() {
         barChart.setFitBars(true)
 
         barChart.invalidate()
+    }
+
+    private fun updateWeightChart(document: DocumentSnapshot){
+
+        val weightRecord = document.get("weightRecord") as? ArrayList<Map<Any, Any>> ?: ArrayList()
+        val dataPoints = DoubleArray(7)
+
+        val currentWeight = document.getDouble("weight")
+        if (weightRecord.isEmpty()){ // no entries
+            for (i in 0 until 7) { // loop 7 times
+                dataPoints[i] = currentWeight?: 0.0
+            }
+        }
+
+        val days = getPreviousDaysList(7)
+        days.reverse()
+
+        // Create data entries for the bar chart from the input data
+        val entries = ArrayList<Entry>()
+        for ((index, value) in dataPoints.withIndex()) {
+            entries.add(Entry(index.toFloat(), value.toFloat()))
+        }
+
+        val set = LineDataSet(entries, "LineDataSet")
+        set.color = Color.rgb(99,169,31)
+        set.setCircleColor(R.color.green)
+
+        val dataSet = LineData(set)
+        //dataSet.barWidth = 0.9f; // set custom bar width
+        dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
+
+        // disable dragging/zooming
+        lineChart.setTouchEnabled(false)
+
+        //axis styling
+        val xAxis = lineChart.xAxis
+        val yAxisLeft = lineChart.axisLeft
+        val yAxisRight = lineChart.axisRight
+
+        //disable gridlines
+        xAxis.setDrawGridLines(false)
+        // yAxisLeft.setDrawGridLines(false)
+        yAxisRight.setDrawGridLines(false)
+
+        //text color
+        yAxisLeft.textColor = ContextCompat.getColor(requireContext(), R.color.primary)
+        xAxis.textColor = ContextCompat.getColor(requireContext(), R.color.primary)
+        xAxis.position = XAxis.XAxisPosition.BOTTOM
+        yAxisRight.setDrawLabels(false)
+
+        // x-axis values
+        val formatter: ValueFormatter = object : ValueFormatter() {
+            override fun getAxisLabel(value: Float, axis: AxisBase?): String {
+                return days.getOrNull(value.toInt()) ?: value.toString()
+            }
+        }
+        xAxis.granularity = 1f
+        xAxis.valueFormatter = formatter
+
+        //Disable Legend
+        val legend = lineChart.getLegend()
+        legend.isEnabled = false
+
+        //Disable Description
+        val description = lineChart.getDescription()
+        description.isEnabled = false
+
+        //Animation
+        lineChart.animateY(500, Easing.EaseInSine);
+        lineChart.animateX(500, Easing.EaseInSine);
+
+        // setting the data
+        lineChart.data = dataSet
+        //lineChart.setFitBars(true)
+
+        lineChart.invalidate()
+    }
+
+    private fun getPreviousDaysList(numDays: Int): Array<String> {
+        val calendar = Calendar.getInstance()
+        val daysList = mutableListOf<String>()
+
+        for (i in numDays - 1 downTo 0) {
+            val sdf = SimpleDateFormat("EEE", Locale.getDefault())
+            val dayName = sdf.format(calendar.time)
+            daysList.add(dayName)
+
+            // Move to the previous day
+            calendar.add(Calendar.DAY_OF_MONTH, -1)
+        }
+
+        return daysList.toTypedArray()
+    }
+
+    private fun getWeightRecord(weightRecord: ArrayList<Map<String, Any>>,): DoubleArray{
+        val weightRecord = sortByFirebaseTimestampField(weightRecord,"timestamp") //
+        val dataPoints = DoubleArray(7)
+
+        val currentDate = Calendar.getInstance()
+//        for (i in 6 downTo 0) {
+//            if(isSameDate()){
+//
+//            }
+//            println("Day $i: $dayName")
+//
+//            // Move to the previous day
+//            currentDate.add(Calendar.DAY_OF_MONTH, -1)
+//        }
+
+        return dataPoints
+    }
+
+    fun sortByFirebaseTimestampField(listOfMaps: ArrayList<Map<String, Any>>, fieldName: String): ArrayList<Map<String, Any>> {
+        return listOfMaps.sortedBy { (it[fieldName] as Timestamp).toDate() } as ArrayList<Map<String, Any>>
+    }
+
+    fun isSameDate(timestamp: Timestamp, calendar: Calendar): Boolean {
+        val firebaseDate = Calendar.getInstance()
+        firebaseDate.time = timestamp.toDate()
+
+        return (calendar.get(Calendar.YEAR) == firebaseDate.get(Calendar.YEAR) &&
+                calendar.get(Calendar.MONTH) == firebaseDate.get(Calendar.MONTH) &&
+                calendar.get(Calendar.DAY_OF_MONTH) == firebaseDate.get(Calendar.DAY_OF_MONTH))
+    }
+
+    private fun setStartMarginAsPercentage(view: View, sibling: View, percentage: Int) {
+        val clampedValue = when {
+            percentage < 1 -> 1
+            percentage > 96 -> 96
+            else -> percentage
+        }
+        val siblingWidth = sibling.width
+        val margin = (siblingWidth * clampedValue / 100)
+
+        val layoutParams = view.layoutParams as ViewGroup.MarginLayoutParams
+        layoutParams.marginStart = margin
+
+        view.layoutParams = layoutParams
+    }
+
+    private fun showBMI(weight: Double, height: Double) {
+        var bmi = weight / (Math.pow((height/100), 2.0)) // weight (kg) / [height (m)]^2
+        bmi = "%.2f".format(bmi).toDouble()
+
+        val percentageMargin = ((bmi / 50)*100).toInt() // Set the desired percentage
+        setStartMarginAsPercentage(targetView, siblingView, percentageMargin)
+
+        val rangeValue = when {
+            bmi < 18.6 -> "underweight"
+            bmi < 25 -> "healthy weight"
+            bmi < 30 -> "overweight"
+            bmi > 30 -> "obese"
+            else -> "healthy weight"
+        }
+        val fullText = "Your current BMI is $bmi. You are within the $rangeValue range"
+        val wordToColor = "$rangeValue"
+        val spannableString = SpannableString(fullText)
+
+        val startIndex = fullText.indexOf(wordToColor)
+        val endIndex = startIndex + wordToColor.length
+
+        val colorResourceId = when {
+            bmi < 18.6 -> R.color.blue
+            bmi < 25 -> R.color.green
+            bmi < 30 -> R.color.orange
+            bmi > 30 -> R.color.red
+            else -> R.color.green
+        }
+        val color = context?.let { ContextCompat.getColor(it, colorResourceId) }
+        spannableString.setSpan(color?.let { ForegroundColorSpan(it) }, startIndex, endIndex, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+
+        textView.text = spannableString
     }
 
     private fun checkAndRequestActivityRecognitionPermission() {
