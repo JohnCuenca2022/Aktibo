@@ -191,9 +191,6 @@ class DetailedStepsGraphFragment : Fragment() {
     private fun getDailySteps(startTime: Long, endTime: Long){
         val calendar = android.icu.util.Calendar.getInstance()
         calendar.time = Date()
-//        val endTime = calendar.timeInMillis // End time is the current date/time
-//        calendar.add(android.icu.util.Calendar.DAY_OF_YEAR, -10) // Go back 7 days
-//        val startTime = calendar.timeInMillis
 
         val googleSignInAccount = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
 
@@ -215,14 +212,6 @@ class DetailedStepsGraphFragment : Fragment() {
                     val dataSet = bucket.dataSets.firstOrNull { it.dataType == DataType.TYPE_STEP_COUNT_DELTA }
                     if (dataSet != null) {
                         for (dataPoint in dataSet.dataPoints) {
-
-                            // number of steps
-//                            val stepCount = dataPoint.getValue(Field.FIELD_STEPS).asInt()
-
-                            // day in String ex. "Mon" "Tue"
-//                            val timestamp = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
-//                            val dateFormat = SimpleDateFormat("E", Locale.getDefault())
-//                            val day = dateFormat.format(Date(timestamp)).toString()
 
                             val startTimeMillis = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
                             val stepCount = dataPoint.getValue(Field.FIELD_STEPS).asInt()

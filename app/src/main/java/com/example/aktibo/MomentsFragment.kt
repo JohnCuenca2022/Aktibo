@@ -368,7 +368,7 @@ class MomentsFragment : Fragment() {
         val builder = MaterialAlertDialogBuilder(requireContext(),R.style.MaterialAlertDialog_App)
             .setTitle("Select a reason")
             .setView(view)
-            .setPositiveButton("OK", null)
+            .setPositiveButton("Confirm", null)
             .setNegativeButton("Cancel") { dialog, which ->
                 // Handle negative button click
                 dialog.dismiss()
@@ -392,7 +392,7 @@ class MomentsFragment : Fragment() {
                     if (selectedOption != null && selectedOption.text == "Other") {
                         // User selected "Other," handle the custom input
 
-                        val otherText = otherTextInputLayout.editText?.text.toString()
+                        val otherText = otherTextInputLayout.editText?.text.toString().trim()
 
                         if (otherText != "") {
                             createReport(otherText, momentID)

@@ -31,7 +31,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 createNotification(rnds, title, message, context, scheduleTime)
             }
             "afternoon" -> {
-                val scheduleTime = getTriggerTime(9, 0)
+                val scheduleTime = getTriggerTime(15, 0)
                 createNotification(rnds, title, message, context, scheduleTime)
             }
             "evening" -> {

@@ -2,7 +2,9 @@ package com.example.aktibo
 
 import android.Manifest
 import android.app.Activity
+import android.content.ContentValues
 import android.content.ContentValues.TAG
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -49,6 +51,7 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.CompletableDeferred
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -235,7 +238,26 @@ class HomeFragment : Fragment() {
                 Log.i(TAG, "OnSuccess()")
                 checkAndRequestActivityRecognitionPermission()
                 readSteps()
-                getDailySteps()
+
+                val today = Calendar.getInstance()
+                today.set(Calendar.HOUR_OF_DAY, 23)
+                today.set(Calendar.MINUTE, 59)
+                today.set(Calendar.SECOND, 59)
+                today.set(Calendar.MILLISECOND, 999)
+
+                val todayDate = Date(today.timeInMillis)
+
+                val start = Calendar.getInstance()
+                start.set(Calendar.HOUR_OF_DAY, 0)
+                start.set(Calendar.MINUTE, 0)
+                start.set(Calendar.SECOND, 0)
+                start.set(Calendar.MILLISECOND, 0)
+
+                start.add(Calendar.DAY_OF_MONTH, -6)
+                val startDate = Date(start.timeInMillis)
+
+                getDailyStepCount(requireContext(), startDate, todayDate)
+
             }
             .addOnFailureListener { e -> Log.d(TAG, "OnFailure()", e) }
     }
@@ -254,94 +276,289 @@ class HomeFragment : Fragment() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun readSteps() {
-        val startTime = LocalDate.now().atStartOfDay(ZoneId.systemDefault())
-        val endTime = LocalDateTime.now().atZone(ZoneId.systemDefault())
+        val start = Calendar.getInstance()
+        start.set(Calendar.HOUR_OF_DAY, 0)
+        start.set(Calendar.MINUTE, 0)
+        start.set(Calendar.SECOND, 0)
+        start.set(Calendar.MILLISECOND, 0)
+        start.set(Calendar.DAY_OF_WEEK, start.firstDayOfWeek)
+        val startDate = Date(start.timeInMillis)
 
-        val datasource = DataSource.Builder()
-            .setAppPackageName("com.google.android.gms")
-            .setDataType(DataType.TYPE_STEP_COUNT_DELTA)
-            .setType(DataSource.TYPE_DERIVED)
-            .setStreamName("estimated_steps")
-            .build()
+        println("START $startDate")
 
-        val request = DataReadRequest.Builder()
-            .aggregate(datasource)
-            .bucketByTime(1, TimeUnit.DAYS)
-            .setTimeRange(startTime.toEpochSecond(), endTime.toEpochSecond(), TimeUnit.SECONDS)
-            .build()
+        start.add(Calendar.DAY_OF_WEEK, 6)
+        val endDate = Date(start.timeInMillis)
 
-        Fitness.getHistoryClient(requireActivity(), GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions))
-            .readData(request)
-            .addOnSuccessListener { response ->
-                val totalSteps = response.buckets
-                    .flatMap { it.dataSets }
-                    .flatMap { it.dataPoints }
-                    .sumBy { it.getValue(Field.FIELD_STEPS).asInt() }
-                Log.i(TAG, "Total steps: $totalSteps")
-                val textViewSteps = view?.findViewById<TextView>(R.id.textViewSteps)
-                val progressBarSteps = view?.findViewById<CircularProgressIndicator>(R.id.progressBarSteps)
-                if (progressBarSteps != null) {
-                    progressBarSteps.setProgress(totalSteps)
-                }
-                if (textViewSteps != null) {
-                    textViewSteps.setText("$totalSteps")
-                }
-            }
-    }
+        println("START $endDate")
 
-    private fun getDailySteps(){
-        val calendar = Calendar.getInstance()
-        calendar.time = Date()
-        val endTime = calendar.timeInMillis // End time is the current date/time
-        calendar.add(Calendar.DAY_OF_YEAR, -7) // Go back 7 days
-        val startTime = calendar.timeInMillis
+        val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
+        val startDateFormatted = sdf.format(startDate)
+        val endDateFormatted = sdf.format(endDate)
 
-        val googleSignInAccount = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
+        val textViewWeek = view?.findViewById<TextView>(R.id.textViewWeek)
+        if (textViewWeek != null) {
+            textViewWeek.setText("$startDateFormatted - $endDateFormatted")
+        }
+
+        val googleSignInAccount =
+            GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
 
         val readRequest = DataReadRequest.Builder()
-            .aggregate(DataType.TYPE_STEP_COUNT_DELTA, DataType.AGGREGATE_STEP_COUNT_DELTA)
+            .aggregate(DataType.TYPE_STEP_COUNT_DELTA)
             .bucketByTime(1, TimeUnit.DAYS)
-            .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+            .setTimeRange(startDate.time, endDate.time, TimeUnit.MILLISECONDS)
             .build()
 
-        val fitnessDataClient = Fitness.getHistoryClient(requireActivity(), googleSignInAccount)
+        val stepCountsMap = ArrayList<MutableMap<String, Any>>()
 
-        val dataReadResultTask = fitnessDataClient.readData(readRequest)
-        dataReadResultTask.addOnSuccessListener { dataReadResponse ->
+        val dataReadResult =
+            Fitness.getHistoryClient(requireContext(), googleSignInAccount).readData(readRequest)
+        dataReadResult.addOnSuccessListener { dataReadResponse ->
             if (dataReadResponse.buckets.isNotEmpty()) {
-                val intArray = IntArray(7)
-                val dayArray = arrayOf("","","","","","","")
-                var index = 0
                 for (bucket in dataReadResponse.buckets) {
-                    val dataSet = bucket.dataSets.firstOrNull { it.dataType == DataType.TYPE_STEP_COUNT_DELTA }
-                    if (dataSet != null) {
-                        for (dataPoint in dataSet.dataPoints) {
-                            val timestamp = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
+                    for (dataset in bucket.dataSets) {
+                        for (dataPoint in dataset.dataPoints) {
+                            val date = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
                             val stepCount = dataPoint.getValue(Field.FIELD_STEPS).asInt()
-                            val dateFormat = SimpleDateFormat("E", Locale.getDefault())
-                            val day = dateFormat.format(Date(timestamp)).toString()
+                            val realDate = Date(date)
 
-                            intArray[index] = stepCount
-                            dayArray[index] = day
-                            index += 1
-                            Log.i(TAG,Date(timestamp).toString())
-                            Log.i(TAG,stepCount.toString())
+                            var hasRecord = false
+                            for (stepsRecord in stepCountsMap) {
+                                val date = stepsRecord["date"] as Date
 
+                                if (isSameDate(realDate, date)) {
+                                    val currentSteps = stepsRecord["steps"] as Int
+                                    stepsRecord["steps"] = currentSteps + stepCount
+                                    hasRecord = true
+                                }
+                            }
+
+                            if (hasRecord) {
+                                continue
+                            }
+
+                            val stepsRecord = mutableMapOf<String, Any>(
+                                "date" to realDate,
+                                "steps" to stepCount
+                            )
+                            stepCountsMap.add(stepsRecord)
                         }
-                        updateStepsChart(intArray, dayArray)
                     }
                 }
             }
-        }.addOnFailureListener { e ->
-            // Handle the error
+
+            var totalSteps = 0
+            for (stepsRecord in stepCountsMap) {
+                val steps = stepsRecord["steps"] as Int
+                totalSteps += steps
+            }
+
+            val textViewSteps = view?.findViewById<TextView>(R.id.textViewSteps)
+            val progressBarSteps = view?.findViewById<CircularProgressIndicator>(R.id.progressBarSteps)
+            if (progressBarSteps != null) {
+                progressBarSteps.setProgress(totalSteps)
+            }
+            if (textViewSteps != null) {
+                textViewSteps.setText("$totalSteps")
+            }
+
         }
     }
 
-    private fun updateStepsChart(data: IntArray, days: Array<String>) {
+    private fun readStepsCalories() {
+        val start = Calendar.getInstance()
+        start.set(Calendar.HOUR_OF_DAY, 0)
+        start.set(Calendar.MINUTE, 0)
+        start.set(Calendar.SECOND, 0)
+        start.set(Calendar.MILLISECOND, 0)
+        start.set(Calendar.DAY_OF_WEEK, start.firstDayOfWeek)
+        val startDate = Date(start.timeInMillis)
+
+        println("START $startDate")
+
+        start.add(Calendar.DAY_OF_WEEK, 6)
+        val endDate = Date(start.timeInMillis)
+
+        println("START $endDate")
+
+        val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
+        val startDateFormatted = sdf.format(startDate)
+        val endDateFormatted = sdf.format(endDate)
+
+        val textViewWeek = view?.findViewById<TextView>(R.id.textViewWeek)
+        if (textViewWeek != null) {
+            textViewWeek.setText("$startDateFormatted - $endDateFormatted")
+        }
+
+        val googleSignInAccount =
+            GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
+
+        val readRequest = DataReadRequest.Builder()
+            .aggregate(DataType.TYPE_CALORIES_EXPENDED)
+            .bucketByActivitySegment(1, TimeUnit.DAYS)
+            .setTimeRange(startDate.time, endDate.time, TimeUnit.MILLISECONDS)
+            .build()
+
+        val calorieCountsMap = ArrayList<MutableMap<String, Any>>()
+
+        val dataReadResult =
+            Fitness.getHistoryClient(requireContext(), googleSignInAccount).readData(readRequest)
+        dataReadResult.addOnSuccessListener { dataReadResponse ->
+            if (dataReadResponse.buckets.isNotEmpty()) {
+                for (bucket in dataReadResponse.buckets) {
+                    for (dataset in bucket.dataSets) {
+                        for (dataPoint in dataset.dataPoints) {
+                            val date = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
+                            val calorieCount = dataPoint.getValue(Field.FIELD_CALORIES).asFloat()
+                            val realDate = Date(date)
+
+                            var hasRecord = false
+                            for (record in calorieCountsMap) {
+                                val date = record["date"] as Date
+
+                                if (isSameDate(realDate, date)) {
+                                    val currentCalories = record["calories"] as Int
+                                    record["calories"] = currentCalories + calorieCount
+                                    hasRecord = true
+                                }
+                            }
+
+                            if (hasRecord) {
+                                continue
+                            }
+
+                            val calorieRecord = mutableMapOf<String, Any>(
+                                "date" to realDate,
+                                "calories" to calorieCount
+                            )
+                            calorieCountsMap.add(calorieRecord)
+                        }
+                    }
+                }
+            }
+
+            var totalCalories = 0
+            for (record in calorieCountsMap) {
+                val calories = record["calories"] as Int
+                totalCalories += calories
+            }
+
+            val textViewCaloriesCount = view?.findViewById<TextView>(R.id.textViewCaloriesCount)
+            val progressBarCalories = view?.findViewById<CircularProgressIndicator>(R.id.progressBarCalories)
+            if (progressBarCalories != null) {
+                progressBarCalories.setProgress(totalCalories)
+            }
+            if (textViewCaloriesCount != null) {
+                textViewCaloriesCount.setText("$totalCalories")
+            }
+
+        }
+    }
+
+    fun getDailyStepCount(context: Context, startDate: Date, endDate: Date) {
+
+        val googleSignInAccount = GoogleSignIn.getAccountForExtension(context, fitnessOptions)
+
+        val readRequest = DataReadRequest.Builder()
+            .aggregate(DataType.TYPE_STEP_COUNT_DELTA)
+            .bucketByTime(1, TimeUnit.DAYS)
+            .setTimeRange(startDate.time, endDate.time, TimeUnit.MILLISECONDS)
+            .build()
+
+        val stepCountsMap = ArrayList<MutableMap<String, Any>>()
+
+        val dataReadResult = Fitness.getHistoryClient(context, googleSignInAccount).readData(readRequest)
+        dataReadResult.addOnSuccessListener { dataReadResponse ->
+            if (dataReadResponse.buckets.isNotEmpty()) {
+                for (bucket in dataReadResponse.buckets) {
+                    for (dataset in bucket.dataSets) {
+                        for (dataPoint in dataset.dataPoints) {
+                            val date = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
+                            val stepCount = dataPoint.getValue(Field.FIELD_STEPS).asInt()
+                            val realDate = Date(date)
+
+                            var hasRecord = false
+                            for (stepsRecord in stepCountsMap){
+                                val date = stepsRecord["date"] as Date
+
+                                if (isSameDate(realDate, date)){
+                                    val currentSteps = stepsRecord["steps"] as Int
+                                    stepsRecord["steps"] = currentSteps + stepCount
+                                    hasRecord = true
+                                }
+                            }
+
+                            if (hasRecord){
+                                continue
+                            }
+
+                            val stepsRecord = mutableMapOf<String, Any>(
+                                "date" to realDate,
+                                "steps" to stepCount
+                            )
+                            stepCountsMap.add(stepsRecord)
+                        }
+                    }
+                }
+            }
+
+            val firstDay = Calendar.getInstance()
+
+            firstDay.time = startDate
+
+            while (firstDay.time <= endDate) {
+                val calendarDate = Date(firstDay.timeInMillis)
+
+                var hasRecord = false
+                for (stepsRecord in stepCountsMap){
+                    val date = stepsRecord["date"] as Date
+
+                    if (isSameDate(calendarDate, date)){
+                        hasRecord = true
+                    }
+                }
+                if (hasRecord){
+                    firstDay.add(Calendar.DAY_OF_MONTH, 1)
+                    continue
+                }
+
+                val newRecord = mutableMapOf<String, Any>(
+                    "date" to calendarDate,
+                    "steps" to 0
+                )
+
+                stepCountsMap.add(newRecord)
+
+                firstDay.add(Calendar.DAY_OF_MONTH, 1)
+            }
+
+            // sort by date
+            stepCountsMap.sortWith(compareBy { it["date"] as Date })
+
+            updateChart(stepCountsMap)
+
+        }
+    }
+
+    private fun updateChart(dailyStepCounts: ArrayList<MutableMap<String, Any>>) {
         val entries = ArrayList<BarEntry>()
 
+        val stepArray = ArrayList<Int>()
+        val dayArray = ArrayList<String>()
+
+        for (stepsRecord in dailyStepCounts) {
+            val date = stepsRecord["date"] as Date
+            val steps = stepsRecord["steps"] as Int
+
+            stepArray.add(steps)
+
+            val dateFormat = SimpleDateFormat("EEE", Locale.getDefault())
+            val day = dateFormat.format(date).toString()
+            dayArray.add(day)
+        }
+
         // Create data entries for the bar chart from the input data
-        for ((index, value) in data.withIndex()) {
+        for ((index, value) in stepArray.withIndex()) {
             entries.add(BarEntry(index.toFloat(), value.toFloat()))
         }
 
@@ -374,7 +591,7 @@ class HomeFragment : Fragment() {
         // x-axis values
         val formatter: ValueFormatter = object : ValueFormatter() {
             override fun getAxisLabel(value: Float, axis: AxisBase?): String {
-                return days.getOrNull(value.toInt()) ?: value.toString()
+                return dayArray.getOrNull(value.toInt()) ?: value.toString()
             }
         }
         xAxis.granularity = 1f
@@ -513,15 +730,19 @@ class HomeFragment : Fragment() {
         return listOfMaps.sortedBy { (it[fieldName] as Timestamp).toDate() } as ArrayList<Map<String, Any>>
     }
 
-    fun isSameDate(timestamp: Timestamp, calendar: Calendar): Boolean {
-        val firebaseDate = Calendar.getInstance()
-        firebaseDate.time = timestamp.toDate()
+    fun isSameDate(firstDate: Date, secondDate: Date): Boolean {
+        val firstDateCalendar = Calendar.getInstance()
+        firstDateCalendar.time = firstDate
 
-        return (calendar.get(Calendar.YEAR) == firebaseDate.get(Calendar.YEAR) &&
-                calendar.get(Calendar.MONTH) == firebaseDate.get(Calendar.MONTH) &&
-                calendar.get(Calendar.DAY_OF_MONTH) == firebaseDate.get(Calendar.DAY_OF_MONTH))
+        val secondDateCalendar = Calendar.getInstance()
+        secondDateCalendar.time = secondDate
+
+        return (firstDateCalendar.get(Calendar.YEAR) == secondDateCalendar.get(Calendar.YEAR) &&
+                firstDateCalendar.get(Calendar.MONTH) == secondDateCalendar.get(Calendar.MONTH) &&
+                firstDateCalendar.get(Calendar.DAY_OF_MONTH) == secondDateCalendar.get(Calendar.DAY_OF_MONTH))
     }
 
+    // BMI
     private fun setStartMarginAsPercentage(view: View, sibling: View, percentage: Int) {
         val clampedValue = when {
             percentage < 1 -> 1
