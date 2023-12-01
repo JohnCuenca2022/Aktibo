@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.support.annotation.Nullable
@@ -171,10 +172,17 @@ class EditAccountFragment : Fragment() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.READ_EXTERNAL_STORAGE)
             != PackageManager.PERMISSION_GRANTED) {
             // Permission is not granted, request it
-            requestPermissions(
-                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-                MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE
-            )
+            if (Build.VERSION.SDK_INT >= 33){
+                requestPermissions(
+                    arrayOf(Manifest.permission.READ_MEDIA_IMAGES),
+                    MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE
+                )
+            } else {
+                requestPermissions(
+                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
+                    MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE
+                )
+            }
         } else {
             // Permission is already granted
             val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
@@ -197,6 +205,7 @@ class EditAccountFragment : Fragment() {
                     startActivityForResult(intent, CAMERA_REQUEST)
                 } else {
                     // Permission denied, handle it gracefully (e.g., show a message to the user)
+                    Toast.makeText(context, "Permission Denied", Toast.LENGTH_SHORT).show()
                 }
             }
 
@@ -207,6 +216,7 @@ class EditAccountFragment : Fragment() {
                     startActivityForResult(intent, PICK_IMAGE_REQUEST)
                 } else {
                     // Permission denied, handle it gracefully (e.g., show a message to the user)
+                    Toast.makeText(context, "Permission Denied", Toast.LENGTH_SHORT).show()
                 }
             }
 

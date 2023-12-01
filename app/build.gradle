@@ -28,7 +28,7 @@ android {
         }
         applicationVariants.all { variant ->
             variant.outputs.each { output ->
-                output.outputFileName = "./sb2-nov-29.apk"
+                output.outputFileName = "./sb2-nov-29-hotfix-2.apk"
             }
         }
     }
