@@ -21,19 +21,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
-        android:id="@+id/textViewWeek"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="30dp"
-        android:fontFamily="@font/roboto_italic"
-        android:text="Jan 1 - Jan 7"
-        android:textColor="@color/primary"
-        android:textSize="14dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/textView" />
-
     <ImageButton
         android:id="@+id/imageButtonAccount"
         android:layout_width="wrap_content"
@@ -65,12 +52,25 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
 
+                <TextView
+                    android:id="@+id/textViewWeek"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/roboto_italic"
+                    android:text=""
+                    android:textColor="@color/primary"
+                    android:textSize="14dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
                 <com.google.android.material.progressindicator.CircularProgressIndicator
                     android:id="@+id/progressBarSteps"
                     style="@style/circularDeterminateProgressBarGreen"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
+                    android:layout_marginTop="10dp"
                     android:max="15000"
                     android:progress="45"
                     app:indicatorSize="140dp"
@@ -85,7 +85,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="16dp"
-                    android:max="500"
+                    android:layout_marginTop="10dp"
+                    android:max="541"
                     android:progress="1"
                     app:indicatorSize="140dp"
                     app:layout_constraintEnd_toEndOf="parent"

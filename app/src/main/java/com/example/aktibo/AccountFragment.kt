@@ -1,8 +1,14 @@
 package com.example.aktibo
 
 import android.R.attr.data
+import android.app.AlarmManager
 import android.app.AlertDialog
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.text.InputType
 import android.util.Log
@@ -16,6 +22,9 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.Fragment
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -98,6 +107,7 @@ class AccountFragment : Fragment() {
         googleSignInClient = GoogleSignIn.getClient(requireActivity(), gso)
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -126,6 +136,52 @@ class AccountFragment : Fragment() {
                 }
                 .show()
 
+        }
+
+        // Settings
+        val helper = MyHelperFunctions()
+        val remindersPref = helper.getPreferenceString("RemindersPref", requireContext())
+        val NotifsPref = helper.getPreferenceString("NotifsPref", requireContext())
+        Log.e("remindersPref", remindersPref.toString())
+        Log.e("NotifsPref", NotifsPref.toString())
+
+        val switchReminders: SwitchCompat = view.findViewById(R.id.switchReminders)
+        switchReminders.isChecked = remindersPref
+
+        switchReminders.setOnCheckedChangeListener { buttonView, isChecked ->
+            val helper = MyHelperFunctions()
+            val key = "RemindersPref"
+            if (isChecked) {
+                helper.setPreferenceString(key, true, requireContext())
+                createNotificationChannel()
+                scheduleNotification(getTriggerTime(9, 0),
+                    "Good Morning!", "Remember to record your morning meal.", "morning")
+                scheduleNotification(getTriggerTime(15, 0),
+                    "Good Afternoon!", "Remember to record your afternoon meal.", "afternoon")
+                scheduleNotification(getTriggerTime(20, 0),
+                    "Good Evening!", "Remember to record your evening meal.", "evening")
+            } else {
+                // Switch is unchecked
+                helper.setPreferenceString(key, false, requireContext())
+                helper.cancelNotificationAlarm(requireContext(), 1010)
+                helper.cancelNotificationAlarm(requireContext(), 1011)
+                helper.cancelNotificationAlarm(requireContext(), 1012)
+            }
+        }
+
+        val switchNotifs: SwitchCompat = view.findViewById(R.id.switchNotifs)
+        switchNotifs.isChecked = NotifsPref
+
+        switchNotifs.setOnCheckedChangeListener { buttonView, isChecked ->
+            val helper = MyHelperFunctions()
+            val key = "NotifsPref"
+            if (isChecked) {
+                helper.setPreferenceString(key, true, requireContext())
+            } else {
+                // Switch is unchecked
+                helper.setPreferenceString(key, false, requireContext())
+                helper.cancelNotificationAlarm(requireContext(), 2020)
+            }
         }
 
         // Logout
@@ -602,6 +658,70 @@ class AccountFragment : Fragment() {
                     }
                 }
         }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun createNotificationChannel() {
+        val name = getString(R.string.channel_name)
+        val descriptionText = getString(R.string.channel_description)
+        val importance = NotificationManager.IMPORTANCE_DEFAULT
+        val channel = NotificationChannel("aktibo", name, importance).apply {
+            description = descriptionText
+        }
+        // Register the channel with the system.
+        val notificationManager: NotificationManager =
+            requireContext().getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
+    }
+
+    private fun scheduleNotification(triggerTime: Long, title: String, text: String, setTime:String) {
+        val intent = Intent(requireContext(), AlarmReceiver::class.java)
+        intent.putExtra("titleExtra", title)
+        intent.putExtra("textExtra", text)
+        intent.putExtra("setTime", setTime)
+
+        var notificationID = 0
+
+        notificationID = when (setTime) {
+            "morning" -> 1010
+            "afternoon" -> 1011
+            "evening" -> 1012
+            else -> 2020
+        }
+
+        // val rnds = (0..7777).random()
+        val pendingIntent = PendingIntent.getBroadcast(
+            requireContext(),
+            notificationID,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val alarmManager = requireContext().getSystemService(AppCompatActivity.ALARM_SERVICE) as AlarmManager
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            triggerTime,
+            pendingIntent
+        )
+    }
+
+    private fun getTriggerTime(hour: Int, minute: Int): Long {
+        val calendar = java.util.Calendar.getInstance().apply {
+            timeInMillis = System.currentTimeMillis()
+            set(java.util.Calendar.HOUR_OF_DAY, hour)
+            set(java.util.Calendar.MINUTE, minute)
+            set(java.util.Calendar.SECOND, 0)
+        }
+
+        // If the specified time has already passed today, set it for the next day
+        if (calendar.timeInMillis <= System.currentTimeMillis()) {
+            calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
+        }
+
+        val calendar2 = java.util.Calendar.getInstance()
+        System.out.println("Current Date and Time: " + calendar2.getTime());
+        System.out.println("Notif Date and Time: " + calendar.getTime());
+
+        return calendar.timeInMillis
     }
 
 }

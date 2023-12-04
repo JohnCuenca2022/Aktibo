@@ -23,20 +23,23 @@ class AlarmReceiver : BroadcastReceiver() {
         val title = intent.getStringExtra("titleExtra").toString()
         val setTime = intent.getStringExtra("setTime").toString()
 
-        val rnds = (0..7777).random() // notification ID
+        val helper = MyHelperFunctions()
+        val remindersPref = helper.getPreferenceString("RemindersPref", context)
 
-        when (setTime) {
-            "morning" -> {
-                val scheduleTime = getTriggerTime(9, 0)
-                createNotification(rnds, title, message, context, scheduleTime)
-            }
-            "afternoon" -> {
-                val scheduleTime = getTriggerTime(15, 0)
-                createNotification(rnds, title, message, context, scheduleTime)
-            }
-            "evening" -> {
-                val scheduleTime = getTriggerTime(20, 0)
-                createNotification(rnds, title, message, context, scheduleTime)
+        if (remindersPref){
+            when (setTime) {
+                "morning" -> {
+                    val scheduleTime = getTriggerTime(9, 0)
+                    createNotification(1010, title, message, context, scheduleTime, 1010)
+                }
+                "afternoon" -> {
+                    val scheduleTime = getTriggerTime(15, 0)
+                    createNotification(1011, title, message, context, scheduleTime, 1011)
+                }
+                "evening" -> {
+                    val scheduleTime = getTriggerTime(20, 0)
+                    createNotification(1012, title, message, context, scheduleTime, 1012)
+                }
             }
         }
 
@@ -62,7 +65,7 @@ class AlarmReceiver : BroadcastReceiver() {
         return calendar.timeInMillis
     }
 
-    private fun createNotification(id: Int, title: String, text: String, context: Context, scheduleTime: Long){
+    private fun createNotification(id: Int, title: String, text: String, context: Context, scheduleTime: Long, requestCode: Int){
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -84,7 +87,7 @@ class AlarmReceiver : BroadcastReceiver() {
         }
 
         updateNotificationLog(title, text)
-        scheduleNotification(context, scheduleTime, title, text)
+        scheduleNotification(context, requestCode, scheduleTime, title, text)
     }
 
     private fun updateNotificationLog(title: String, text: String){
@@ -109,13 +112,13 @@ class AlarmReceiver : BroadcastReceiver() {
             }
     }
 
-    private fun scheduleNotification(context: Context, triggerTime: Long, title: String, text: String) {
+    private fun scheduleNotification(context: Context, requestCode: Int, triggerTime: Long, title: String, text: String) {
         val intent = Intent(context, AlarmReceiver::class.java)
         intent.putExtra("titleExtra", title)
         intent.putExtra("textExtra", text)
         val pendingIntent = PendingIntent.getBroadcast(
             context,
-            1,
+            requestCode,
             intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
