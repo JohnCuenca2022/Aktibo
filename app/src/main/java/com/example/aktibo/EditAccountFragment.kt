@@ -29,6 +29,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.aktibo.LoginActivity.Companion.TAG
 import com.google.android.material.textfield.TextInputEditText
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -51,6 +52,8 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.sql.Time
+import java.util.Calendar
 import java.util.UUID
 
 
@@ -127,40 +130,99 @@ class EditAccountFragment : Fragment() {
                     enableButton(button_save)
                     enableAllInputs()
                 } else {
-                    CoroutineScope(IO).launch{
-                        val isSafeEnglish = async {
-                            checkProfanity(newUsername, "en", apiUser, apiSecret)
-                        }.await()
+                    userRef.get()
+                        .addOnSuccessListener { documentSnapshot ->
+                            if (documentSnapshot.exists()) {
+                                // Document exists, you can access its data
+                                val username = documentSnapshot.getString("username")
+                                if (username == newUsername){
+                                    Toast.makeText(requireContext(), "New username is the same as old username", Toast.LENGTH_SHORT).show()
 
-                        if (!isSafeEnglish){ // stop if has profanity in English or an error happened
-                            withContext(Dispatchers.Main) {
+                                    enableButton(button_save)
+                                    enableAllInputs()
+
+                                    return@addOnSuccessListener
+                                }
+
+                                var lastChangedUsername = documentSnapshot.get("lastChangedUsername")
+                                if (lastChangedUsername == null){
+                                    val currentDate = Calendar.getInstance()
+                                    val oneYearAgo = Calendar.getInstance()
+                                    oneYearAgo.add(Calendar.YEAR, -1)
+                                    lastChangedUsername = Timestamp(oneYearAgo.time)
+                                }
+                                lastChangedUsername = lastChangedUsername as Timestamp
+                                val lastChangedUsernameDate = lastChangedUsername.toDate()
+
+                                val currentDate = Calendar.getInstance().time
+
+                                val calendar = Calendar.getInstance()
+                                calendar.time = currentDate
+                                calendar.add(Calendar.MONTH, -1) // Subtract one month
+
+                                if (lastChangedUsernameDate.after(calendar.time)){ // date is less than a month ago
+                                    Toast.makeText(requireContext(), "Username can only be changed once every 30 days.", Toast.LENGTH_SHORT).show()
+
+                                    enableButton(button_save)
+                                    enableAllInputs()
+
+                                    return@addOnSuccessListener
+                                } else {
+                                    CoroutineScope(IO).launch{
+
+                                        val isSafeEnglish = async {
+                                            checkProfanity(newUsername, "en", apiUser, apiSecret)
+                                        }.await()
+
+                                        if (!isSafeEnglish){ // stop if has profanity in English or an error happened
+                                            withContext(Dispatchers.Main) {
+                                                enableButton(button_save)
+                                                enableAllInputs()
+                                            }
+                                            return@launch
+                                        }
+
+                                        val isSafeFilipino = async {
+                                            checkProfanity(newUsername, "tl", apiUser, apiSecret)
+                                        }.await()
+
+                                        if (!isSafeFilipino){ // stop if has profanity in Tagalog/Filipino or an error happened
+                                            withContext(Dispatchers.Main) {
+                                                enableButton(button_save)
+                                                enableAllInputs()
+                                            }
+                                            return@launch
+                                        }
+
+                                        userRef
+                                            .update(
+                                                "username", newUsername,
+                                                "lastChangedUsername", Timestamp.now()
+                                            )
+                                            .addOnSuccessListener {
+                                                Toast.makeText(context, "Profile Updated", Toast.LENGTH_SHORT).show()
+                                                enableButton(button_save)
+                                                enableAllInputs()
+                                                val fragmentManager = getParentFragmentManager()
+                                                fragmentManager.popBackStack()
+                                            }
+                                            .addOnFailureListener { e -> Log.w(TAG, "Error updating document", e) }
+                                    }
+                                }
+
+                            } else {
+                                println("Document does not exist")
                                 enableButton(button_save)
                                 enableAllInputs()
                             }
-                            return@launch
+                        }
+                        .addOnFailureListener { exception ->
+                            // Handle failures
+                            println("Error getting document: $exception")
+                            enableButton(button_save)
+                            enableAllInputs()
                         }
 
-                        val isSafeFilipino = async {
-                            checkProfanity(newUsername, "tl", apiUser, apiSecret)
-                        }.await()
-
-                        if (!isSafeFilipino){ // stop if has profanity in Tagalog/Filipino or an error happened
-                            withContext(Dispatchers.Main) {
-                                enableButton(button_save)
-                                enableAllInputs()
-                            }
-                            return@launch
-                        }
-
-                        userRef
-                            .update("username", newUsername)
-                            .addOnSuccessListener {
-                                Toast.makeText(context, "Profile Updated", Toast.LENGTH_SHORT).show()
-                                val fragmentManager = getParentFragmentManager()
-                                fragmentManager.popBackStack()
-                            }
-                            .addOnFailureListener { e -> Log.w(TAG, "Error updating document", e) }
-                    }
                 }
             }
 
@@ -386,18 +448,31 @@ class EditAccountFragment : Fragment() {
                     hideTextWarningMessage()
                     val selectedImage = data?.data
 
-                    if (selectedImage != null){
-                        CoroutineScope(IO).launch{
-                            val isImageSafe = async {
-                                analyzeImage(requireContext(), selectedImage, workflow, apiUser, apiSecret)
-                            }.await()
+                    val helper = MyHelperFunctions()
+                    val fileSize = selectedImage?.let {
+                        helper.getImageSizeInMB(requireContext().contentResolver,
+                            it
+                        )
+                    }
 
-                            if (!isImageSafe){ // stop if has violation or an error happened
-                                return@launch
+                    if (fileSize != null) {
+                        if (fileSize > 3.0){
+                            Toast.makeText(context, "Image size must not exceed 3MB", Toast.LENGTH_SHORT).show()
+                        } else {
+                            CoroutineScope(IO).launch{
+                                val isImageSafe = async {
+                                    analyzeImage(requireContext(), selectedImage, workflow, apiUser, apiSecret)
+                                }.await()
+
+                                if (!isImageSafe){ // stop if has violation or an error happened
+                                    return@launch
+                                }
+                                uploadImageToFirebase(selectedImage)
                             }
-                            uploadImageToFirebase(selectedImage)
                         }
                     }
+
+
 
 
                 }
@@ -406,16 +481,25 @@ class EditAccountFragment : Fragment() {
                     hideTextWarningMessage()
                     val photo = data?.extras?.get("data") as Bitmap
 
-                    CoroutineScope(IO).launch{
-                        val isImageSafe = async {
-                            analyzeBitmap(requireContext(), photo, workflow, apiUser, apiSecret)
-                        }.await()
+                    val helper = MyHelperFunctions()
+                    val fileSize = helper.getBitmapSizeInMB(photo)
 
-                        if (!isImageSafe){ // stop if has violation or an error happened
-                            return@launch
+                    if (fileSize > 3.0) {
+                        Toast.makeText(context, "Image size must not exceed 3MB", Toast.LENGTH_SHORT).show()
+                    } else {
+                        CoroutineScope(IO).launch{
+                            val isImageSafe = async {
+                                analyzeBitmap(requireContext(), photo, workflow, apiUser, apiSecret)
+                            }.await()
+
+                            if (!isImageSafe){ // stop if has violation or an error happened
+                                return@launch
+                            }
+                            uploadBitmapToFirebase(photo)
                         }
-                        uploadBitmapToFirebase(photo)
                     }
+
+
                 }
             }
         }

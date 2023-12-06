@@ -234,6 +234,7 @@ class NewMomentFragment : Fragment() {
                     if (imageSize != null) {
                         if (imageSize >= maxImageSizeinMB) {
                             Toast.makeText(requireContext(), "Image size cannot exceed 3MB.", Toast.LENGTH_SHORT).show()
+                            placeholderImage.visibility = View.VISIBLE
                         } else {
                             newMomentImage.setImageURI(selectedImage) // change image view
                             newMomentImageUri = selectedImage // intialize image URI
@@ -254,6 +255,7 @@ class NewMomentFragment : Fragment() {
 
                     if (imageSize >= maxImageSizeinMB) {
                         Toast.makeText(requireContext(), "Image size cannot exceed 3MB.", Toast.LENGTH_SHORT).show()
+                        placeholderImage.visibility = View.VISIBLE
                     } else {
                         newMomentImage.setImageBitmap(photo) // change image view
                         newMomentBitmap = photo // intialize image Bitmap
@@ -541,6 +543,7 @@ class NewMomentFragment : Fragment() {
         if (totalBytes > 3 * 1024 * 1024) {
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Image size must not exceed 3MB", Toast.LENGTH_SHORT).show()
+                placeholderImage.visibility = View.VISIBLE
             }
             imageSrc.complete("")
         }
@@ -584,6 +587,7 @@ class NewMomentFragment : Fragment() {
         if (data.size >= (3 * 1024 * 1024)) {
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Image size must not exceed 3MB", Toast.LENGTH_SHORT).show()
+                placeholderImage.visibility = View.VISIBLE
             }
             imageSrc.complete("")
         }

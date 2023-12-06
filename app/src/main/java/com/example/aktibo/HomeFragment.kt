@@ -27,8 +27,11 @@ import android.view.ViewGroup
 import android.view.animation.AnimationUtils
 import android.widget.ImageButton
 import android.widget.TextView
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.github.mikephil.charting.animation.Easing
@@ -55,6 +58,8 @@ import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.CompletableDeferred
@@ -64,6 +69,8 @@ import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 class HomeFragment : Fragment() {
 
@@ -79,6 +86,8 @@ class HomeFragment : Fragment() {
 
     private lateinit var lineChart: LineChart
     private lateinit var weightMore: ImageButton
+
+    private lateinit var weightGoalButton: ImageButton
 
     private lateinit var siblingView: View
     private lateinit var targetView: View
@@ -128,18 +137,29 @@ class HomeFragment : Fragment() {
         weightMore = view.findViewById(R.id.weightMore)
         weightMore.setOnClickListener{
             // Apply fadeOut animation when pressed
-            stepsMore.startAnimation(fadeOut)
+            weightMore.startAnimation(fadeOut)
 
-            replaceFragmentWithAnim(DetailedStepsGraphFragment())
+            replaceFragmentWithAnim(DetailedWeightGraphFragment())
 
             // Apply fadeIn animation when released
-            stepsMore.startAnimation(fadeIn)
+            weightMore.startAnimation(fadeIn)
         }
 
         // bmi indicator
         siblingView = view.findViewById<View>(R.id.bmi_slider)
         targetView = view.findViewById<View>(R.id.bmi_indicator)
         textView = view.findViewById<TextView>(R.id.textView2)
+
+        weightGoalButton = view.findViewById(R.id.weightGoalButton)
+        weightGoalButton.setOnClickListener{
+            // Apply fadeOut animation when pressed
+            weightGoalButton.startAnimation(fadeOut)
+
+            replaceFragmentWithAnim(WeightGoalFragment())
+
+            // Apply fadeIn animation when released
+            weightGoalButton.startAnimation(fadeIn)
+        }
 
 
         val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
@@ -168,6 +188,9 @@ class HomeFragment : Fragment() {
             scheduleNotification(getTriggerTime(20, 0),
                 "Good Evening!", "Remember to record your evening meal.", "evening")
         }
+
+        // Other Notifs
+        sendMotivationalNotif()
 
         return view
     }
@@ -308,6 +331,10 @@ class HomeFragment : Fragment() {
         println("START $startDate")
 
         start.add(Calendar.DAY_OF_WEEK, 6)
+        start.set(Calendar.HOUR_OF_DAY, 23)
+        start.set(Calendar.MINUTE, 59)
+        start.set(Calendar.SECOND, 59)
+        start.set(Calendar.MILLISECOND, 999)
         val endDate = Date(start.timeInMillis)
 
         println("START $endDate")
@@ -603,13 +630,68 @@ class HomeFragment : Fragment() {
 
     private fun updateWeightChart(document: DocumentSnapshot){
 
-        val weightRecord = document.get("weightRecord") as? ArrayList<Map<Any, Any>> ?: ArrayList()
+        val weightRecords = document.get("weightRecords") as? ArrayList<Map<Any, Any>> ?: ArrayList()
         val dataPoints = DoubleArray(7)
 
         val currentWeight = document.getDouble("weight")
-        if (weightRecord.isEmpty()){ // no entries
+        if (weightRecords.isEmpty()){ // no entries
             for (i in 0 until 7) { // loop 7 times
                 dataPoints[i] = currentWeight?: 0.0
+            }
+        } else if (weightRecords.size < 8) {
+            val last7Days = getLast7Days(Date(Calendar.getInstance().timeInMillis))
+            for (i in 0 until 7) { // loop 7 times
+                val day = last7Days[i]
+                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val dayString = sdf.format(day)
+
+                var hasDataPoint = false
+                for (map in weightRecords) {
+                    val mapTimestamp = map["date"] as Timestamp
+                    val weight = map["weight"] as Double
+                    val mapDate = sdf.format(mapTimestamp.toDate())
+                    if (mapDate == dayString) {
+                        dataPoints[i] = weight
+                        hasDataPoint = true
+                        break
+                    }
+                }
+
+                if(!hasDataPoint && i == 0){
+                    dataPoints[i] = currentWeight?: 0.0
+                } else if (!hasDataPoint){
+                    dataPoints[i] = dataPoints[i-1]
+                }
+
+            }
+
+        } else {
+            weightRecords.subList(weightRecords.size - 8, weightRecords.size)
+            val last7Days = getLast7Days(Date(Calendar.getInstance().timeInMillis))
+            for (i in 0 until 7) { // loop 7 times
+                val day = last7Days[i]
+                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val dayString = sdf.format(day)
+
+                var hasDataPoint = false
+                for (map in weightRecords) {
+                    val mapTimestamp = map["date"] as Timestamp
+                    val weight = map["weight"] as Double
+                    val mapDate = sdf.format(mapTimestamp.toDate())
+                    if (mapDate == dayString) {
+                        dataPoints[i] = weight
+                        hasDataPoint = true
+                        break
+                    }
+                }
+
+                if(!hasDataPoint && i == 0){
+                    val weight = weightRecords[0]["weight"] as Double
+                    dataPoints[i] = weight
+                } else if (!hasDataPoint){
+                    dataPoints[i] = dataPoints[i-1]
+                }
+
             }
         }
 
@@ -693,26 +775,19 @@ class HomeFragment : Fragment() {
         return daysList.toTypedArray()
     }
 
-    private fun getWeightRecord(weightRecord: ArrayList<Map<String, Any>>,): DoubleArray{
-        val weightRecord = sortByFirebaseTimestampField(weightRecord,"timestamp") //
-        val dataPoints = DoubleArray(7)
+    fun getLast7Days(today: Date): List<Date> {
+        val calendar = Calendar.getInstance()
+        calendar.time = today
 
-        val currentDate = Calendar.getInstance()
-//        for (i in 6 downTo 0) {
-//            if(isSameDate()){
-//
-//            }
-//            println("Day $i: $dayName")
-//
-//            // Move to the previous day
-//            currentDate.add(Calendar.DAY_OF_MONTH, -1)
-//        }
+        val last7Days = mutableListOf<Date>()
 
-        return dataPoints
-    }
+        for (i in 0 until 7) {
+            last7Days.add(calendar.time)
+            calendar.add(Calendar.DAY_OF_YEAR, -1)
+        }
 
-    fun sortByFirebaseTimestampField(listOfMaps: ArrayList<Map<String, Any>>, fieldName: String): ArrayList<Map<String, Any>> {
-        return listOfMaps.sortedBy { (it[fieldName] as Timestamp).toDate() } as ArrayList<Map<String, Any>>
+        // Reverse the list to get the dates in descending order (from today to 7 days ago)
+        return last7Days.reversed()
     }
 
     fun isSameDate(firstDate: Date, secondDate: Date): Boolean {
@@ -872,6 +947,219 @@ class HomeFragment : Fragment() {
         System.out.println("Notif Date and Time: " + calendar.getTime());
 
         return calendar.timeInMillis
+    }
+
+    private fun sendMotivationalNotif(){
+        val helper = MyHelperFunctions()
+        if(!isTodayThursday()){
+            helper.setPreferenceString("canPostWeightNotif", true, requireContext())
+            return
+        }
+
+        // makes it only show once per day
+        val canPostWeightNotif = helper.getPreferenceString("canPostWeightNotif", requireContext())
+        // user has show notifs on
+        val NotifsPref = helper.getPreferenceString("NotifsPref", requireContext())
+        if (canPostWeightNotif && NotifsPref){
+            checkWeightGoalProgress()
+        }
+
+    }
+
+    fun checkWeightGoalProgress(){
+        val user = Firebase.auth.currentUser
+        user?.let {
+            val uid = it.uid // user ID
+            val db = Firebase.firestore
+            val docRef = db.collection("users").document(uid)
+            docRef.get()
+                .addOnSuccessListener { document ->
+                    if (document != null) {
+                        val weightRecords = document.get("weightRecords") as? ArrayList<Map<Any, Any>> ?: ArrayList()
+
+                        val dataList = mutableListOf<Double>()
+
+                        val currentWeight = document.getDouble("weight")
+                        if (weightRecords.isEmpty()){ // no entries
+                            for (i in 0 until 7) { // loop 7 times
+                                dataList.add(currentWeight?: 0.0)
+                            }
+                        } else if (weightRecords.size < 8) {
+                            val last7Days = getLast7Days(Date(Calendar.getInstance().timeInMillis))
+                            for (i in 0 until 7) { // loop 7 times
+                                val day = last7Days[i]
+                                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                val dayString = sdf.format(day)
+
+                                var hasDataPoint = false
+                                for (map in weightRecords) {
+                                    val mapTimestamp = map["date"] as Timestamp
+                                    val weight = map["weight"] as Double
+                                    val mapDate = sdf.format(mapTimestamp.toDate())
+                                    if (mapDate == dayString) {
+                                        dataList.add(weight)
+                                        hasDataPoint = true
+                                        break
+                                    }
+                                }
+
+                                if(!hasDataPoint && i == 0){
+                                    dataList.add(currentWeight?: 0.0)
+                                } else if (!hasDataPoint){
+                                    dataList.add(dataList.last())
+                                }
+
+                            }
+
+                        } else {
+                            weightRecords.subList(weightRecords.size - 8, weightRecords.size)
+                            val last7Days = getLast7Days(Date(Calendar.getInstance().timeInMillis))
+                            for (i in 0 until 7) { // loop 7 times
+                                val day = last7Days[i]
+                                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                val dayString = sdf.format(day)
+
+                                var hasDataPoint = false
+                                for (map in weightRecords) {
+                                    val mapTimestamp = map["date"] as Timestamp
+                                    val weight = map["weight"] as Double
+                                    val mapDate = sdf.format(mapTimestamp.toDate())
+                                    if (mapDate == dayString) {
+                                        dataList.add(weight)
+                                        hasDataPoint = true
+                                        break
+                                    }
+                                }
+
+                                if(!hasDataPoint && i == 0){
+                                    val weight = weightRecords[0]["weight"] as Double
+                                    dataList.add(weight)
+                                } else if (!hasDataPoint){
+                                    dataList.add(dataList.last())
+                                }
+
+                            }
+                        }
+
+                        val weightGoal = document.getDouble("weightGoal")?.toInt()
+                        val targetValue = document.getDouble("targetWeight") ?: 0.0
+
+                        val helper = MyHelperFunctions()
+                        if (weightGoal == 0){
+                            val trending = isStayingAroundTarget(dataList, targetValue, 3.0)
+
+                            if (trending) {
+                                createNotification(2020, "Keep Going!", "You're doing great on reaching your weight goal", requireContext())
+                                helper.setPreferenceString("canPostWeightNotif", false, requireContext())
+                            } else {
+                                createNotification(2020, "Let's change our game plan!", "You're falling a bit behind on reaching your weight goal", requireContext())
+                                helper.setPreferenceString("canPostWeightNotif", false, requireContext())
+                            }
+                        } else {
+                            val trending = isTrendingTowardsTarget(dataList, targetValue)
+
+                            if (trending) {
+                                createNotification(2020, "Keep Going!", "You're doing great on reaching your weight goal", requireContext())
+                                helper.setPreferenceString("canPostWeightNotif", false, requireContext())
+                            } else {
+                                createNotification(2020, "Let's change our game plan!", "You're falling a bit behind on reaching your weight goal", requireContext())
+                                helper.setPreferenceString("canPostWeightNotif", false, requireContext())
+                            }
+                        }
+
+
+                    }
+                }
+        }
+    }
+
+    fun isTodayThursday(): Boolean {
+        val calendar = Calendar.getInstance()
+        val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+
+        // Calendar.DAY_OF_WEEK returns values from 1 (Sunday) to 7 (Saturday)
+        return dayOfWeek == Calendar.THURSDAY
+    }
+
+    fun isTrendingTowardsTarget(data: List<Double>, target: Double): Boolean {
+        if (data.isEmpty()) {
+            // Handle empty list case
+            return false
+        }
+
+        // Calculate the average of the data
+        val average = data.average()
+
+        // Check if the average is closer to the target than the first element in the list
+        val firstElement = data.first()
+        return Math.abs(average - target) < Math.abs(firstElement - target)
+    }
+
+    fun isStayingAroundTarget(data: List<Double>, target: Double, threshold: Double): Boolean {
+        if (data.isEmpty()) {
+            // Handle empty list case
+            return false
+        }
+
+        // Calculate the mean of the data
+        val mean = data.average()
+
+        // Calculate the standard deviation of the data
+        val standardDeviation = calculateStandardDeviation(data, mean)
+
+        // Check if the standard deviation is within the threshold
+        return standardDeviation < threshold
+    }
+
+    fun calculateStandardDeviation(data: List<Double>, mean: Double): Double {
+        val sumSquaredDifferences = data.map { (it - mean).pow(2) }.sum()
+        return sqrt(sumSquaredDifferences / data.size)
+    }
+
+    private fun createNotification(id: Int, title: String, text: String, context: Context){
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+
+        val builder = context.let {
+            NotificationCompat.Builder(it, "aktibo")
+                .setSmallIcon(R.drawable.aktibo_icon)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                // Set the intent that fires when the user taps the notification.
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+        }
+
+        with(context.let { NotificationManagerCompat.from(it) }) {
+            this.notify(id, builder.build())
+        }
+
+        updateNotificationLog(title, text)
+    }
+
+    private fun updateNotificationLog(title: String, text: String){
+        val auth = FirebaseAuth.getInstance()
+        val currentUser = auth.currentUser
+        val uid = currentUser?.uid
+
+        val db = FirebaseFirestore.getInstance()
+        val documentReference = db.collection("users").document(uid.toString())
+
+        val newElement = hashMapOf(
+            "message" to "${title}\n${text}",
+            "time" to Timestamp.now()
+        )
+
+        documentReference.update("notifications", FieldValue.arrayUnion(newElement))
+            .addOnSuccessListener {
+                Log.d(LoginActivity.TAG, "DocumentSnapshot successfully updated!")
+            }
+            .addOnFailureListener { e ->
+                Log.w(LoginActivity.TAG, "Error updating document", e)
+            }
     }
 
 }

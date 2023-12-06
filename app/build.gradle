@@ -28,7 +28,7 @@ android {
         }
         applicationVariants.all { variant ->
             variant.outputs.each { output ->
-                output.outputFileName = "./sb2-nov-29-hotfix-2.apk"
+                output.outputFileName = "./sb2-nov-29-hotfix-3.apk"
             }
         }
     }
@@ -60,7 +60,13 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.9.1'
     implementation "androidx.lifecycle:lifecycle-viewmodel:2.3.1"
     implementation "androidx.lifecycle:lifecycle-livedata:2.3.1"
-    implementation 'org.apache.poi:poi:3.17'
+    implementation ('org.apache.poi:poi:3.17') {
+        exclude group: 'org.apache.xmlbeans', module: 'xmlbeans'
+    }
+    implementation ('org.apache.poi:poi-ooxml:3.17') {
+        exclude group: 'org.apache.xmlbeans', module: 'xmlbeans'
+    }
+    implementation "com.itextpdf:itextpdf:5.5.13.2"
     implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
     implementation 'com.squareup.picasso:picasso:2.71828'
     implementation 'androidx.core:core-ktx:1.8.0'

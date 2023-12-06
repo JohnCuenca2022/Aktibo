@@ -390,7 +390,7 @@
 
                     <ImageButton
                         android:contentDescription="weight goal button"
-                        android:id="@+id/mealRecipesButton"
+                        android:id="@+id/weightGoalButton"
                         android:layout_width="300dp"
                         android:layout_height="80dp"
                         android:scaleType="centerInside"

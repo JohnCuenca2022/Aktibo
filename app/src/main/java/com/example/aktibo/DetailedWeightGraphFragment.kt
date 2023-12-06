@@ -15,22 +15,30 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.github.mikephil.charting.animation.Easing
 import com.github.mikephil.charting.charts.BarChart
+import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.AxisBase
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.BarData
 import com.github.mikephil.charting.data.BarDataSet
 import com.github.mikephil.charting.data.BarEntry
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.fitness.Fitness
@@ -39,8 +47,15 @@ import com.google.android.gms.fitness.data.DataType
 import com.google.android.gms.fitness.data.Field
 import com.google.android.gms.fitness.request.DataReadRequest
 import com.google.android.material.datepicker.CalendarConstraints
+import com.google.android.material.datepicker.DateValidatorPointBackward
 import com.google.android.material.datepicker.MaterialDatePicker
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import com.itextpdf.text.Document
 import com.itextpdf.text.PageSize
 import com.itextpdf.text.pdf.BaseFont
@@ -61,17 +76,10 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-class DetailedStepsGraphFragment : Fragment() {
-
+class DetailedWeightGraphFragment : Fragment() {
     private lateinit var auth: FirebaseAuth
-    private val MY_PERMISSIONS_REQUEST_ACTIVITY_RECOGNITION = 123
     private val MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 222
-    private val fitnessOptions = FitnessOptions.builder()
-        .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
-        .addDataType(DataType.AGGREGATE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
-        .addDataType(DataType.AGGREGATE_ACTIVITY_SUMMARY, FitnessOptions.ACCESS_READ)
-        .build()
-    private lateinit var barChart: BarChart
+    private lateinit var lineChart: LineChart
     private lateinit var datePickerButton: Button
     private lateinit var workbook: Workbook
 
@@ -79,7 +87,7 @@ class DetailedStepsGraphFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val view = inflater.inflate(R.layout.fragment_detailed_steps_graph, container, false)
+        val view = inflater.inflate(R.layout.fragment_detailed_weight_graph, container, false)
 
         // Set the minimum date to a specific date (e.g., January 1, 2023)
         val minDate = Calendar.getInstance()
@@ -150,23 +158,11 @@ class DetailedStepsGraphFragment : Fragment() {
 
             linearLayout.visibility = View.VISIBLE
 
-            getDailyStepCount(requireContext(), Date(startDate), Date(endDate))
+            getWeightRecord(Date(startDate), Date(endDate))
         }
 
         // initialize barChart
-        barChart = view.findViewById(R.id.barChart)
-
-        val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
-
-        if (!GoogleSignIn.hasPermissions(account, fitnessOptions)) {
-            GoogleSignIn.requestPermissions(
-                this, // your activity
-                819, // e.g. 1
-                account,
-                fitnessOptions)
-        } else {
-            accessGoogleFit()
-        }
+        lineChart = view.findViewById(R.id.lineChart)
 
         val generateReportButton = view.findViewById<ImageButton>(R.id.generateReportButton)
         generateReportButton.setOnClickListener{
@@ -176,141 +172,121 @@ class DetailedStepsGraphFragment : Fragment() {
         return view
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun accessGoogleFit() {
-        val end = LocalDateTime.now()
-        val start = end.minusYears(1)
-        val endSeconds = end.atZone(ZoneId.systemDefault()).toEpochSecond()
-        val startSeconds = start.atZone(ZoneId.systemDefault()).toEpochSecond()
+    fun getWeightRecord(startDate: Date, endDate: Date) {
 
-        val readRequest = DataReadRequest.Builder()
-            .aggregate(DataType.AGGREGATE_STEP_COUNT_DELTA)
-            .setTimeRange(startSeconds, endSeconds, TimeUnit.SECONDS)
-            .bucketByTime(1, TimeUnit.DAYS)
-            .build()
-        val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
-        Fitness.getHistoryClient(requireContext(), account)
-            .readData(readRequest)
-            .addOnSuccessListener { response ->
-                // Use response data here
-                Log.i(ContentValues.TAG, "OnSuccess()")
-                // getDailySteps()
-            }
-            .addOnFailureListener { e -> Log.d(ContentValues.TAG, "OnFailure()", e) }
-    }
+        // get user
+        val user = Firebase.auth.currentUser
+        user?.let {
+            val uid = it.uid // user ID
+            // get user data
+            val db = Firebase.firestore
+            val docRef = db.collection("users").document(uid)
+            docRef.get()
+                .addOnSuccessListener { document ->
+                    if (document != null) {
+                        val weightRecordsList: ArrayList<Map<String, Any>> = ArrayList()
 
-    fun getDailyStepCount(context: Context, startDate: Date, endDate: Date) {
+                        val weightRecords = document.get("weightRecords") as? ArrayList<Map<Any, Any>> ?: ArrayList()
 
-        val googleSignInAccount = GoogleSignIn.getAccountForExtension(context, fitnessOptions)
+                        val currentWeight = document.getDouble("weight") ?: 0.0
+                        val numberOfDays = getNumberOfDays(startDate, endDate)
+                        val daysDates = getDatesInRange(startDate, endDate)
+                        if (weightRecords.isEmpty()){ // no entries
+                            for (i in 0 until numberOfDays) { // loop 7 times
+                                val date = daysDates[i]
 
-        val readRequest = DataReadRequest.Builder()
-            .aggregate(DataType.TYPE_STEP_COUNT_DELTA)
-            .bucketByTime(1, TimeUnit.DAYS)
-            .setTimeRange(startDate.time, endDate.time, TimeUnit.MILLISECONDS)
-            .build()
+                                val dataPoint = mutableMapOf(
+                                    "date" to date,
+                                    "weight" to currentWeight
+                                )
+                                weightRecordsList.add(dataPoint)
+                            }
+                        } else {
+                            for (i in 0 until numberOfDays) { // loop 7 times
+                                val day = daysDates[i]
+                                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                val dayString = sdf.format(day)
 
-        val stepCountsMap = ArrayList<MutableMap<String, Any>>()
-
-        val dataReadResult = Fitness.getHistoryClient(context, googleSignInAccount).readData(readRequest)
-        dataReadResult.addOnSuccessListener { dataReadResponse ->
-            if (dataReadResponse.buckets.isNotEmpty()) {
-                for (bucket in dataReadResponse.buckets) {
-                    for (dataset in bucket.dataSets) {
-                        for (dataPoint in dataset.dataPoints) {
-                            val date = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
-                            val stepCount = dataPoint.getValue(Field.FIELD_STEPS).asInt()
-                            val realDate = Date(date)
-
-                            var hasRecord = false
-                            for (stepsRecord in stepCountsMap){
-                                val date = stepsRecord["date"] as Date
-
-                                if (isSameDate(realDate, date)){
-                                    val currentSteps = stepsRecord["steps"] as Int
-                                    stepsRecord["steps"] = currentSteps + stepCount
-                                    hasRecord = true
+                                var hasDataPoint = false
+                                for (map in weightRecords) {
+                                    val mapTimestamp = map["date"] as Timestamp
+                                    val weight = map["weight"] as Double
+                                    val mapDate = sdf.format(mapTimestamp.toDate())
+                                    if (mapDate == dayString) {
+                                        val dataPoint = mutableMapOf(
+                                            "date" to day,
+                                            "weight" to weight
+                                        )
+                                        weightRecordsList.add(dataPoint)
+                                        hasDataPoint = true
+                                        break
+                                    }
                                 }
-                            }
 
-                            if (hasRecord){
-                                continue
-                            }
+                                if(!hasDataPoint && i == 0){
+                                    val dataPoint = mutableMapOf(
+                                        "date" to day,
+                                        "weight" to currentWeight
+                                    )
+                                    weightRecordsList.add(dataPoint)
+                                } else if (!hasDataPoint){
+                                    val previousWeight = weightRecordsList[i-1]["weight"] as Double
+                                    val dataPoint = mutableMapOf(
+                                        "date" to day,
+                                        "weight" to previousWeight
+                                    )
+                                    weightRecordsList.add(dataPoint)
+                                }
 
-                            val stepsRecord = mutableMapOf<String, Any>(
-                                "date" to realDate,
-                                "steps" to stepCount
-                            )
-                            stepCountsMap.add(stepsRecord)
+                            }
+                        }
+
+                        if (!weightRecordsList.isEmpty()){
+                            updateChart(weightRecordsList)
+                            createExcel(weightRecordsList)
                         }
                     }
                 }
-            }
-
-            val firstDay = android.icu.util.Calendar.getInstance()
-
-            firstDay.time = startDate
-
-            while (firstDay.time <= endDate) {
-                val calendarDate = Date(firstDay.timeInMillis)
-
-                var hasRecord = false
-                for (stepsRecord in stepCountsMap){
-                    val date = stepsRecord["date"] as Date
-
-                    if (isSameDate(calendarDate, date)){
-                        hasRecord = true
-                    }
-                }
-                if (hasRecord){
-                    firstDay.add(android.icu.util.Calendar.DAY_OF_MONTH, 1)
-                    continue
-                }
-
-                val newRecord = mutableMapOf<String, Any>(
-                    "date" to calendarDate,
-                    "steps" to 0
-                )
-
-                stepCountsMap.add(newRecord)
-
-                firstDay.add(android.icu.util.Calendar.DAY_OF_MONTH, 1)
-            }
-
-            // sort by date
-            stepCountsMap.sortWith(compareBy { it["date"] as Date })
-
-            updateChart(stepCountsMap)
-            createExcel(stepCountsMap)
-
         }
+
     }
 
-    fun isSameDate(firstDate: Date, secondDate: Date): Boolean {
-        val firstDateCalendar = android.icu.util.Calendar.getInstance()
-        firstDateCalendar.time = firstDate
+    fun getDatesInRange(startDate: Date, endDate: Date): List<Date> {
+        val calendar = Calendar.getInstance()
+        calendar.time = startDate
 
-        val secondDateCalendar = android.icu.util.Calendar.getInstance()
-        secondDateCalendar.time = secondDate
+        val datesInRange = mutableListOf<Date>()
 
-        return (firstDateCalendar.get(android.icu.util.Calendar.YEAR) == secondDateCalendar.get(
-            android.icu.util.Calendar.YEAR) &&
-                firstDateCalendar.get(android.icu.util.Calendar.MONTH) == secondDateCalendar.get(
-            android.icu.util.Calendar.MONTH) &&
-                firstDateCalendar.get(android.icu.util.Calendar.DAY_OF_MONTH) == secondDateCalendar.get(
-            android.icu.util.Calendar.DAY_OF_MONTH))
+        while (!calendar.time.after(endDate)) {
+            datesInRange.add(calendar.time)
+            calendar.add(Calendar.DATE, 1)
+        }
+
+        return datesInRange
     }
 
-    private fun updateChart(dailyStepCounts: ArrayList<MutableMap<String, Any>>) {
-        val entries = ArrayList<BarEntry>()
+    fun getNumberOfDays(startDate: Date, endDate: Date): Int {
+        // Calculate the difference in milliseconds
+        val differenceInMillis = endDate.time - startDate.time
 
-        val stepArray = ArrayList<Int>()
+        // Convert milliseconds to days
+        val daysDifference = (differenceInMillis / (1000 * 60 * 60 * 24)).toInt()
+
+        // Add 1 to include both the start and end dates
+        return daysDifference + 1
+    }
+
+    private fun updateChart(weightRecordsList: ArrayList<Map<String, Any>>) {
+        val entries = ArrayList<Entry>()
+
+        val weightArray = ArrayList<Double>()
         val dayArray = ArrayList<String>()
 
-        for (stepsRecord in dailyStepCounts) {
-            val date = stepsRecord["date"] as Date
-            val steps = stepsRecord["steps"] as Int
+        for (weightRecord in weightRecordsList) {
+            val date = weightRecord["date"] as Date
+            val weight = weightRecord["weight"] as Double
 
-            stepArray.add(steps)
+            weightArray.add(weight)
 
             val dateFormat = SimpleDateFormat("MMM-d", Locale.getDefault())
             val day = dateFormat.format(date).toString()
@@ -318,24 +294,25 @@ class DetailedStepsGraphFragment : Fragment() {
         }
 
         // Create data entries for the bar chart from the input data
-        for ((index, value) in stepArray.withIndex()) {
+        for ((index, value) in weightArray.withIndex()) {
             entries.add(BarEntry(index.toFloat(), value.toFloat()))
         }
 
-        val set = BarDataSet(entries, "BarDataSet")
+        val set = LineDataSet(entries, "LineDataSet")
         set.color = Color.rgb(99,169,31)
+        set.setCircleColor(R.color.green)
 
-        val dataSet = BarData(set)
-        dataSet.barWidth = 0.9f; // set custom bar width
+        val dataSet = LineData(set)
+        //dataSet.barWidth = 0.9f; // set custom bar width
         dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
 
         // disable dragging/zooming
         // barChart.setTouchEnabled(false)
 
         //axis styling
-        val xAxis = barChart.xAxis
-        val yAxisLeft = barChart.axisLeft
-        val yAxisRight = barChart.axisRight
+        val xAxis = lineChart.xAxis
+        val yAxisLeft = lineChart.axisLeft
+        val yAxisRight = lineChart.axisRight
 
         //disable gridlines
         xAxis.setDrawGridLines(false)
@@ -358,25 +335,25 @@ class DetailedStepsGraphFragment : Fragment() {
         xAxis.valueFormatter = formatter
 
         //Disable Legend
-        val legend = barChart.getLegend()
+        val legend = lineChart.getLegend()
         legend.isEnabled = false
 
         //Disable Description
-        val description = barChart.getDescription()
+        val description = lineChart.getDescription()
         description.isEnabled = false
 
         //Animation
-        barChart.animateY(500, Easing.EaseInSine);
-        barChart.animateX(500, Easing.EaseInSine);
+        lineChart.animateY(500, Easing.EaseInSine);
+        lineChart.animateX(500, Easing.EaseInSine);
 
         // setting the data
-        barChart.data = dataSet
-        barChart.setFitBars(true)
+        lineChart.data = dataSet
+        //lineChart.setFitBars(true)
 
-        barChart.invalidate()
+        lineChart.invalidate()
     }
 
-    private fun createExcel(dailyStepCounts: ArrayList<MutableMap<String, Any>>){
+    private fun createExcel(weightRecordsList: ArrayList<Map<String, Any>>){
         // Create a new Excel workbook
         workbook = HSSFWorkbook()
 
@@ -385,9 +362,9 @@ class DetailedStepsGraphFragment : Fragment() {
 
         var index = 0
 
-        for (stepsRecord in dailyStepCounts) {
-            val date = stepsRecord["date"] as Date
-            val steps = stepsRecord["steps"] as Int
+        for (weightRecord in weightRecordsList) {
+            val date = weightRecord["date"] as Date
+            val weight = weightRecord["weight"] as Double
 
             val row: Row = sheet.createRow(index)
 
@@ -400,7 +377,7 @@ class DetailedStepsGraphFragment : Fragment() {
 
             // Create a cell in the row and set its value
             val cell2: Cell = row.createCell(1)
-            cell2.setCellValue(steps.toString())
+            cell2.setCellValue(weight.toString())
 
             index++
 
@@ -492,7 +469,7 @@ class DetailedStepsGraphFragment : Fragment() {
                     0 -> {
                         val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
                         val currentDateAndTime = dateFormat.format(Date())
-                        val fileName = "aktibo-steps_$currentDateAndTime.xls"
+                        val fileName = "aktibo-weight_$currentDateAndTime.xls"
 
                         val contentValues = ContentValues().apply {
                             put(MediaStore.Files.FileColumns.DISPLAY_NAME, fileName)
@@ -520,7 +497,7 @@ class DetailedStepsGraphFragment : Fragment() {
                     1 -> {
                         val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
                         val currentDateAndTime = dateFormat.format(Date())
-                        val pdfFileName = "aktibo-steps_$currentDateAndTime.pdf"
+                        val pdfFileName = "aktibo-weight_$currentDateAndTime.pdf"
 
                         try {
                             createPDFFromWorkbook(requireContext(), workbook, pdfFileName)
