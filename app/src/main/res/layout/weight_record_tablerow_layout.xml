@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TableRow
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/tablerow_outline_background">
+
+    <TextView
+        android:id="@+id/weightRecordDate"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:fontFamily="@font/roboto_bold"
+        android:gravity="center"
+        android:text="December 7, 2023"
+        android:layout_weight="0.3"
+        android:textColor="@color/primary"
+        android:textSize="15sp" />
+
+    <TextView
+        android:id="@+id/weightRecordWeight"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:fontFamily="@font/roboto_bold"
+        android:layout_weight="0.3"
+        android:gravity="center"
+        android:text="160kg / 20lbs"
+        android:textColor="@color/primary"
+        android:textSize="15sp" />
+
+</TableRow>

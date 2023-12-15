@@ -2,21 +2,27 @@ package com.example.aktibo
 
 import android.Manifest
 import android.content.ContentValues
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.icu.text.SimpleDateFormat
+import android.icu.util.Calendar
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.github.mikephil.charting.animation.Easing
@@ -36,6 +42,11 @@ import com.google.android.gms.fitness.request.DataReadRequest
 import com.google.android.material.datepicker.CalendarConstraints
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.firebase.auth.FirebaseAuth
+import com.itextpdf.text.Document
+import com.itextpdf.text.PageSize
+import com.itextpdf.text.pdf.BaseFont
+import com.itextpdf.text.pdf.PdfContentByte
+import com.itextpdf.text.pdf.PdfWriter
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
 import org.apache.poi.ss.usermodel.Cell
 import org.apache.poi.ss.usermodel.Row
@@ -46,7 +57,6 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -62,20 +72,13 @@ class DetailedStepsGraphFragment : Fragment() {
         .addDataType(DataType.AGGREGATE_ACTIVITY_SUMMARY, FitnessOptions.ACCESS_READ)
         .build()
     private lateinit var barChart: BarChart
-    private lateinit var textView2: TextView
+    private lateinit var datePickerButton: Button
     private lateinit var workbook: Workbook
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_detailed_steps_graph, container, false)
 
         // Set the minimum date to a specific date (e.g., January 1, 2023)
@@ -87,10 +90,7 @@ class DetailedStepsGraphFragment : Fragment() {
 
         // Set/placeholder date
         val firstDate = Calendar.getInstance()
-        firstDate.add(Calendar.DAY_OF_MONTH, -7)
-
-        // Create a Calendar instance for initial and end date selection
-        val calendar = Calendar.getInstance()
+        firstDate.add(Calendar.DAY_OF_MONTH, -6)
 
         // Set up the date picker for range selection
         val builder = MaterialDatePicker.Builder.dateRangePicker()
@@ -125,8 +125,8 @@ class DetailedStepsGraphFragment : Fragment() {
 
         val datePicker = builder.build()
 
-        textView2 = view.findViewById(R.id.textView2)
-        textView2.setOnClickListener{
+        datePickerButton = view.findViewById(R.id.datePickerButton)
+        datePickerButton.setOnClickListener{
             datePicker.show(parentFragmentManager, datePicker.toString())
         }
 
@@ -134,32 +134,55 @@ class DetailedStepsGraphFragment : Fragment() {
             val startDate = selection.first
             val endDate = selection.second
 
-            println(startDate)
-            println(endDate)
-            getDailySteps(startDate, endDate)
+            val start = Date(startDate)
+            val end = Date(endDate)
 
-            // Handle selected dates
-            // ...
+            // show user the chosen dates
+            val dateFormat = SimpleDateFormat("MMM d, yyyy")
+            val startFormatted  = dateFormat.format(start)
+            val endFormatted  = dateFormat.format(end)
+
+            val linearLayout = view.findViewById<LinearLayout>(R.id.linearLayout)
+            val textView2 = view.findViewById<TextView>(R.id.textView2)
+            textView2.text = startFormatted
+            val textView4 = view.findViewById<TextView>(R.id.textView4)
+            textView4.text = endFormatted
+            linearLayout.visibility = View.VISIBLE
+
+            // get accurate time
+            val helper = MyHelperFunctions()
+
+            val startDateCalendar = Calendar.getInstance()
+            startDateCalendar.timeInMillis = startDate
+            val realStartDate = helper.startOfDay(startDateCalendar)
+
+            val endDateCalendar = Calendar.getInstance()
+            endDateCalendar.timeInMillis = endDate
+            val realEndDate = helper.endOfDay(endDateCalendar)
+
+            getDailyStepCount(requireContext(), realStartDate.time, realEndDate.time)
+
+            //getDailyStepCount(requireContext(), startDateCalendar.time, endDateCalendar.time)
         }
 
         // initialize barChart
         barChart = view.findViewById(R.id.barChart)
 
-        val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
-
-        if (!GoogleSignIn.hasPermissions(account, fitnessOptions)) {
-            GoogleSignIn.requestPermissions(
-                this, // your activity
-                819, // e.g. 1
-                account,
-                fitnessOptions)
-        } else {
-            accessGoogleFit()
-        }
+//        val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
+//
+//        if (!GoogleSignIn.hasPermissions(account, fitnessOptions)) {
+//            GoogleSignIn.requestPermissions(
+//                this, // your activity
+//                819, // e.g. 1
+//                account,
+//                fitnessOptions)
+//        } else {
+//            accessGoogleFit()
+//        }
 
         val generateReportButton = view.findViewById<ImageButton>(R.id.generateReportButton)
         generateReportButton.setOnClickListener{
-            savePDF()
+            saveFile()
         }
 
         return view
@@ -188,86 +211,127 @@ class DetailedStepsGraphFragment : Fragment() {
             .addOnFailureListener { e -> Log.d(ContentValues.TAG, "OnFailure()", e) }
     }
 
-    private fun getDailySteps(startTime: Long, endTime: Long){
-        val calendar = android.icu.util.Calendar.getInstance()
-        calendar.time = Date()
-//        val endTime = calendar.timeInMillis // End time is the current date/time
-//        calendar.add(android.icu.util.Calendar.DAY_OF_YEAR, -10) // Go back 7 days
-//        val startTime = calendar.timeInMillis
+    fun getDailyStepCount(context: Context, startDate: Date, endDate: Date) {
 
-        val googleSignInAccount = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
+        val googleSignInAccount = GoogleSignIn.getAccountForExtension(context, fitnessOptions)
 
         val readRequest = DataReadRequest.Builder()
-            .aggregate(DataType.TYPE_STEP_COUNT_DELTA, DataType.AGGREGATE_STEP_COUNT_DELTA)
+            .aggregate(DataType.TYPE_STEP_COUNT_DELTA)
             .bucketByTime(1, TimeUnit.DAYS)
-            .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+            .setTimeRange(startDate.time, endDate.time, TimeUnit.MILLISECONDS)
             .build()
 
-        val fitnessDataClient = Fitness.getHistoryClient(requireActivity(), googleSignInAccount)
+        val stepCountsMap = ArrayList<MutableMap<String, Any>>()
 
-        val dataReadResultTask = fitnessDataClient.readData(readRequest)
-        dataReadResultTask.addOnSuccessListener { dataReadResponse ->
+        val dataReadResult = Fitness.getHistoryClient(context, googleSignInAccount).readData(readRequest)
+        dataReadResult.addOnSuccessListener { dataReadResponse ->
             if (dataReadResponse.buckets.isNotEmpty()) {
-
-                val dailyStepCounts = mutableMapOf<Long, Int>()
-
                 for (bucket in dataReadResponse.buckets) {
-                    val dataSet = bucket.dataSets.firstOrNull { it.dataType == DataType.TYPE_STEP_COUNT_DELTA }
-                    if (dataSet != null) {
-                        for (dataPoint in dataSet.dataPoints) {
-
-                            // number of steps
-//                            val stepCount = dataPoint.getValue(Field.FIELD_STEPS).asInt()
-
-                            // day in String ex. "Mon" "Tue"
-//                            val timestamp = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
-//                            val dateFormat = SimpleDateFormat("E", Locale.getDefault())
-//                            val day = dateFormat.format(Date(timestamp)).toString()
-
-                            val startTimeMillis = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
+                    for (dataset in bucket.dataSets) {
+                        for (dataPoint in dataset.dataPoints) {
+                            val date = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
                             val stepCount = dataPoint.getValue(Field.FIELD_STEPS).asInt()
+                            val realDate = Date(date)
 
-                            // Get the date (in milliseconds since epoch) for this DataPoint
-                            val dateMillis = getStartOfDayInMillis(startTimeMillis)
+                            println("*********************************")
+                            println(stepCount)
+                            println(realDate.toString())
 
-                            // Update the daily step count in the map
-                            dailyStepCounts[dateMillis] = (dailyStepCounts[dateMillis] ?: 0) + stepCount
+                            var hasRecord = false
+                            for (stepsRecord in stepCountsMap){
+                                val date = stepsRecord["date"] as Date
 
-                            Log.i(ContentValues.TAG, Date(startTimeMillis).toString())
-                            Log.i(ContentValues.TAG, stepCount.toString())
+                                if (isSameDate(realDate, date)){
+                                    val currentSteps = stepsRecord["steps"] as Int
+                                    stepsRecord["steps"] = currentSteps + stepCount
+                                    hasRecord = true
+                                }
+                            }
 
+                            if (hasRecord){
+                                continue
+                            }
+
+                            val stepsRecord = mutableMapOf<String, Any>(
+                                "date" to realDate,
+                                "steps" to stepCount
+                            )
+                            stepCountsMap.add(stepsRecord)
                         }
-                        updateChart(dailyStepCounts)
-                        createPDF(dailyStepCounts)
                     }
                 }
             }
-        }.addOnFailureListener { e ->
-            // Handle the error
+
+            val firstDay = Calendar.getInstance()
+
+            firstDay.time = startDate
+
+            while (firstDay.time <= endDate) {
+                val calendarDate = Date(firstDay.timeInMillis)
+
+                var hasRecord = false
+                for (stepsRecord in stepCountsMap){
+                    val date = stepsRecord["date"] as Date
+
+                    if (isSameDate(calendarDate, date)){
+                        hasRecord = true
+                    }
+                }
+                if (hasRecord){
+                    firstDay.add(Calendar.DAY_OF_MONTH, 1)
+                    continue
+                }
+
+                val newRecord = mutableMapOf<String, Any>(
+                    "date" to calendarDate,
+                    "steps" to 0
+                )
+
+                stepCountsMap.add(newRecord)
+
+                firstDay.add(Calendar.DAY_OF_MONTH, 1)
+            }
+
+            // sort by date
+            stepCountsMap.sortWith(compareBy { it["date"] as Date })
+
+            updateChart(stepCountsMap)
+            createExcel(stepCountsMap)
+
         }
     }
 
-    // Helper function to get the start of the day in milliseconds
-    private fun getStartOfDayInMillis(millis: Long): Long {
-        return millis - millis % (24 * 60 * 60 * 1000)
+    fun isSameDate(firstDate: Date, secondDate: Date): Boolean {
+        val firstDateCalendar = Calendar.getInstance()
+        firstDateCalendar.time = firstDate
+
+        val secondDateCalendar = Calendar.getInstance()
+        secondDateCalendar.time = secondDate
+
+        return (firstDateCalendar.get(Calendar.YEAR) == secondDateCalendar.get(
+            Calendar.YEAR) &&
+                firstDateCalendar.get(Calendar.MONTH) == secondDateCalendar.get(
+            Calendar.MONTH) &&
+                firstDateCalendar.get(Calendar.DAY_OF_MONTH) == secondDateCalendar.get(
+            Calendar.DAY_OF_MONTH))
     }
 
-    private fun updateChart(dailyStepCounts: MutableMap<Long, Int>) {
+    private fun updateChart(dailyStepCounts: ArrayList<MutableMap<String, Any>>) {
         val entries = ArrayList<BarEntry>()
 
         val stepArray = ArrayList<Int>()
         val dayArray = ArrayList<String>()
 
-        for ((dateMillis, totalSteps) in dailyStepCounts) {
-            stepArray.add(totalSteps)
+        for (stepsRecord in dailyStepCounts) {
+            val date = stepsRecord["date"] as Date
+            val steps = stepsRecord["steps"] as Int
+
+            stepArray.add(steps)
 
             val dateFormat = SimpleDateFormat("MMM-d", Locale.getDefault())
-            val day = dateFormat.format(Date(dateMillis)).toString()
+            val day = dateFormat.format(date).toString()
             dayArray.add(day)
-
-            println("Day: $day, Total Steps: $totalSteps")
         }
-
 
         // Create data entries for the bar chart from the input data
         for ((index, value) in stepArray.withIndex()) {
@@ -328,7 +392,7 @@ class DetailedStepsGraphFragment : Fragment() {
         barChart.invalidate()
     }
 
-    private fun createPDF(dailyStepCounts: MutableMap<Long, Int>){
+    private fun createExcel(dailyStepCounts: ArrayList<MutableMap<String, Any>>){
         // Create a new Excel workbook
         workbook = HSSFWorkbook()
 
@@ -336,12 +400,15 @@ class DetailedStepsGraphFragment : Fragment() {
         val sheet: Sheet = workbook.createSheet("Sheet1")
 
         var index = 0
-        for ((dateMillis, totalSteps) in dailyStepCounts) {
-            // Create a row in the sheet
+
+        for (stepsRecord in dailyStepCounts) {
+            val date = stepsRecord["date"] as Date
+            val steps = stepsRecord["steps"] as Int
+
             val row: Row = sheet.createRow(index)
 
             val dateFormat = SimpleDateFormat("MM/dd/YYYY", Locale.getDefault())
-            val day = dateFormat.format(Date(dateMillis)).toString()
+            val day = dateFormat.format(date).toString()
 
             // Create a cell in the row and set its value
             val cell: Cell = row.createCell(0)
@@ -349,16 +416,77 @@ class DetailedStepsGraphFragment : Fragment() {
 
             // Create a cell in the row and set its value
             val cell2: Cell = row.createCell(1)
-            cell2.setCellValue(totalSteps.toString())
+            cell2.setCellValue(steps.toString())
 
             index++
+
         }
 
     }
 
-    private fun savePDF(){
+    fun createPDFFromWorkbook(context: Context, workbook: Workbook, pdfFileName: String) {
+        val externalStorageDir = context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS)
+
+        val pdfFilePath = File(externalStorageDir, pdfFileName).toString()
+
+        val document = Document(PageSize.LETTER)
+        val pdfWriter = PdfWriter.getInstance(document, FileOutputStream(pdfFilePath))
+        document.open()
+
+        val baseFont = BaseFont.createFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED)
+        val contentByte: PdfContentByte = pdfWriter.directContent
+
+        for (sheetIndex in 0 until workbook.numberOfSheets) {
+            val sheet = workbook.getSheetAt(sheetIndex)
+
+            document.newPage()
+            contentByte.setFontAndSize(baseFont, 12f)
+
+            for (rowIndex in 0 until sheet.physicalNumberOfRows) {
+                val row = sheet.getRow(rowIndex)
+
+                for (cellIndex in 0 until row.physicalNumberOfCells) {
+                    val cell = row.getCell(cellIndex)
+
+                    // Adjust x, y coordinates and other parameters as needed
+                    contentByte.setTextMatrix(cellIndex.toFloat() * 100, document.top() - rowIndex * 20)
+                    contentByte.showText(cell.toString())
+                }
+            }
+        }
+
+        document.close()
+
+        // Use MediaStore to insert the PDF file into the database
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Files.FileColumns.DISPLAY_NAME, pdfFileName)
+            put(MediaStore.Files.FileColumns.MIME_TYPE, "application/pdf")
+            put(MediaStore.Files.FileColumns.RELATIVE_PATH, Environment.DIRECTORY_DOCUMENTS)
+        }
+
+        val contentUri = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val pdfUri = context.contentResolver.insert(contentUri, contentValues)
+
+        pdfUri?.let {
+            try {
+                val outputStream = context.contentResolver.openOutputStream(pdfUri)
+                if (outputStream != null) {
+                    val inputStream = File(pdfFilePath).inputStream()
+                    inputStream.use { input ->
+                        outputStream.use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun saveFile(){
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            != PackageManager.PERMISSION_GRANTED
+            != PackageManager.PERMISSION_GRANTED && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
         ) {
             // Permission is not granted, request it
             ActivityCompat.requestPermissions(
@@ -367,29 +495,60 @@ class DetailedStepsGraphFragment : Fragment() {
                 MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE
             )
         } else {
-            // Permission is already granted, proceed with Excel file creation
-            // Save the workbook to a file
-            val folderName = "Aktibo"
-            val fileName = "text.xls"
-            val externalStorageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
-            val folder = File(externalStorageDir, folderName)
-            if (!folder.exists()) {
-                folder.mkdirs()
+            if (!::workbook.isInitialized){
+                Toast.makeText(context, "Please select a date range", Toast.LENGTH_SHORT).show()
+                return
             }
 
-            // Create the Excel file inside the folder
-            val excelFile = File(folder, fileName)
+            val options = arrayOf("Save as Excel", "Save as PDF")
+            val builder = AlertDialog.Builder(requireContext())
+            builder.setTitle("Select File Type")
+            builder.setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
+                        val currentDateAndTime = dateFormat.format(Date())
+                        val fileName = "aktibo-steps_$currentDateAndTime.xls"
 
-            try {
-                val fileOutputStream = FileOutputStream(excelFile)
-                workbook.write(fileOutputStream)
-                fileOutputStream.close()
-                println("Success")
-                Toast.makeText(context, "File Successfully Created", Toast.LENGTH_SHORT).show()
-            } catch (e: IOException) {
-                e.printStackTrace()
-                println("failed")
+                        val contentValues = ContentValues().apply {
+                            put(MediaStore.Files.FileColumns.DISPLAY_NAME, fileName)
+                            put(MediaStore.Files.FileColumns.MIME_TYPE, "application/vnd.ms-excel")
+                        }
+
+                        val contentUri = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                        val uri = requireContext().contentResolver.insert(contentUri, contentValues)
+
+                        uri?.let {
+                            try {
+                                val outputStream = requireContext().contentResolver.openOutputStream(uri)
+                                outputStream?.use { fileOutputStream ->
+                                    workbook.write(fileOutputStream)
+                                }
+
+                                println("Success")
+                                Toast.makeText(context, "File Successfully Created in Documents", Toast.LENGTH_SHORT).show()
+                            } catch (e: IOException) {
+                                e.printStackTrace()
+                                Toast.makeText(context, "Failed to create file", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    1 -> {
+                        val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
+                        val currentDateAndTime = dateFormat.format(Date())
+                        val pdfFileName = "aktibo-steps_$currentDateAndTime.pdf"
+
+                        try {
+                            createPDFFromWorkbook(requireContext(), workbook, pdfFileName)
+                            Toast.makeText(context, "File Successfully Created in Documents", Toast.LENGTH_SHORT).show()
+                        } catch  (e: IOException) {
+                            Toast.makeText(context, "Failed to create file", Toast.LENGTH_SHORT).show()
+                        }
+
+                    }
+                }
             }
+            builder.show()
         }
 
     }
@@ -403,9 +562,10 @@ class DetailedStepsGraphFragment : Fragment() {
             MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     // Permission granted, proceed with Excel file creation
-                    savePDF()
+                    saveFile()
                 } else {
                     // Permission denied, handle accordingly (e.g., show a message to the user)
+                    Toast.makeText(context, "Permission Denied", Toast.LENGTH_SHORT).show()
                 }
             }
         }

@@ -3,6 +3,10 @@ package com.example.aktibo
 import android.Manifest
 import android.animation.ValueAnimator
 import android.app.Activity
+import android.app.AlarmManager
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
@@ -12,6 +16,9 @@ import android.icu.text.SimpleDateFormat
 import android.icu.util.Calendar
 import android.os.Build
 import android.os.Bundle
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.style.ForegroundColorSpan
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -20,36 +27,47 @@ import android.view.animation.AnimationUtils
 import android.widget.ImageButton
 import android.widget.TextView
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.github.mikephil.charting.animation.Easing
 import com.github.mikephil.charting.charts.BarChart
+import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.AxisBase
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.BarData
 import com.github.mikephil.charting.data.BarDataSet
 import com.github.mikephil.charting.data.BarEntry
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.ValueFormatter
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.fitness.Fitness
 import com.google.android.gms.fitness.FitnessOptions
-import com.google.android.gms.fitness.data.DataSource
 import com.google.android.gms.fitness.data.DataType
 import com.google.android.gms.fitness.data.Field
 import com.google.android.gms.fitness.request.DataReadRequest
 import com.google.android.material.progressindicator.CircularProgressIndicator
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.ZoneId
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 class HomeFragment : Fragment() {
 
-    private lateinit var auth: FirebaseAuth
     private val MY_PERMISSIONS_REQUEST_ACTIVITY_RECOGNITION = 123
     private val fitnessOptions = FitnessOptions.builder()
         .addDataType(DataType.TYPE_STEP_COUNT_DELTA, FitnessOptions.ACCESS_READ)
@@ -60,7 +78,15 @@ class HomeFragment : Fragment() {
     private lateinit var barChart: BarChart
     private lateinit var stepsMore: ImageButton
 
-    @RequiresApi(Build.VERSION_CODES.O)
+    private lateinit var lineChart: LineChart
+    private lateinit var weightMore: ImageButton
+
+    private lateinit var weightGoalButton: ImageButton
+
+    private lateinit var siblingView: View
+    private lateinit var targetView: View
+    private lateinit var textView: TextView
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -83,8 +109,11 @@ class HomeFragment : Fragment() {
             imageButtonAccount.startAnimation(fadeIn)
         }
 
+        // initialize barChart
+        barChart = view.findViewById(R.id.barChart)
+
         // transition to more detailed steps graph
-        val stepsMore = view.findViewById<ImageButton>(R.id.stepsMore)
+        stepsMore = view.findViewById(R.id.stepsMore)
         stepsMore.setOnClickListener {
             // Apply fadeOut animation when pressed
             stepsMore.startAnimation(fadeOut)
@@ -95,20 +124,77 @@ class HomeFragment : Fragment() {
             stepsMore.startAnimation(fadeIn)
         }
 
-        // initialize barChart
-        barChart = view.findViewById(R.id.barChart)
+        // initialize lineChart
+        lineChart = view.findViewById(R.id.lineChart)
+
+        weightMore = view.findViewById(R.id.weightMore)
+        weightMore.setOnClickListener{
+            // Apply fadeOut animation when pressed
+            weightMore.startAnimation(fadeOut)
+
+            replaceFragmentWithAnim(DetailedWeightGraphFragment())
+
+            // Apply fadeIn animation when released
+            weightMore.startAnimation(fadeIn)
+        }
+
+        // bmi indicator
+        siblingView = view.findViewById(R.id.bmi_slider)
+        targetView = view.findViewById(R.id.bmi_indicator)
+        textView = view.findViewById(R.id.textView2)
+
+        weightGoalButton = view.findViewById(R.id.weightGoalButton)
+        weightGoalButton.setOnClickListener{
+            // Apply fadeOut animation when pressed
+            weightGoalButton.startAnimation(fadeOut)
+
+            replaceFragmentWithAnim(WeightGoalFragment())
+
+            // Apply fadeIn animation when released
+            weightGoalButton.startAnimation(fadeIn)
+        }
+
 
         val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
 
-        if (!GoogleSignIn.hasPermissions(account, fitnessOptions)) {
+        if (!GoogleSignIn.hasPermissions(account, fitnessOptions)) { // does not have permissions
             GoogleSignIn.requestPermissions(
                 this, // your activity
                 819, // e.g. 1
                 account,
                 fitnessOptions)
         } else {
-            accessGoogleFit()
+            checkAndRequestActivityRecognitionPermission() // record steps
+            readSteps()
+
+            val helper = MyHelperFunctions()
+            val today = Calendar.getInstance()
+            val endDate = helper.endOfDay(today)
+
+            val daysAgo = Calendar.getInstance()
+            daysAgo.add(Calendar.DAY_OF_YEAR, -6)
+            val startDate = helper.startOfDay(daysAgo)
+
+            getDailyStepCount(requireContext(), startDate.time, endDate.time)
         }
+
+        //schedule notifications
+        createNotificationChannel()
+
+        val helper = MyHelperFunctions()
+        val remindersPref = helper.getPreferenceString("RemindersPref", requireContext())
+
+        if (remindersPref){
+            scheduleNotification(getTriggerTime(9, 0),
+                "Good Morning!", "Remember to record your morning meal.", "morning")
+            scheduleNotification(getTriggerTime(15, 0),
+                "Good Afternoon!", "Remember to record your afternoon meal.", "afternoon")
+            scheduleNotification(getTriggerTime(20, 0),
+                "Good Evening!", "Remember to record your evening meal.", "evening")
+        }
+
+        // Other Notifs
+        sendMotivationalNotif()
 
         return view
     }
@@ -127,26 +213,57 @@ class HomeFragment : Fragment() {
         fragmentTransaction.commit()
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // get user
+        val user = Firebase.auth.currentUser
+        user?.let {
+            val uid = it.uid
+            val db = Firebase.firestore
+            val docRef = db.collection("users").document(uid)
+            docRef.get()
+                .addOnSuccessListener { document ->
+                    if (document != null) {
 
+                        // Weight Chart
+                        updateWeightChart(document)
 
-        // Example data (replace this with your own data)
-        val inputData = intArrayOf(25, 123, 400, 87)
+                        // BMI Indicator
+                        val weight = document.getDouble("weight")?: 1.0
+                        val height = document.getDouble("height")?: 1.0
+                        showBMI(weight, height)
 
-        // Create a function to update the chart with the provided data
-//        updateChart(inputData)
+                        Log.d(TAG, "DocumentSnapshot data: ${document.data}")
+                    } else {
+                        Log.d(TAG, "No such document")
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    Log.d(TAG, "get failed with ", exception)
+                }
+        }
 
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         when (resultCode) {
             Activity.RESULT_OK -> when (requestCode) {
-                819 -> accessGoogleFit()
+                819 -> {
+                    checkAndRequestActivityRecognitionPermission() // record steps
+                    readSteps()
+
+                    val helper = MyHelperFunctions()
+                    val today = Calendar.getInstance()
+                    val endDate = helper.endOfDay(today)
+
+                    val daysAgo = Calendar.getInstance()
+                    daysAgo.add(Calendar.DAY_OF_YEAR, -6)
+                    val startDate = helper.startOfDay(daysAgo)
+
+                    getDailyStepCount(requireContext(), startDate.time, endDate.time)
+                }
                 else -> {
                     // Result wasn't from Google Fit
                 }
@@ -155,31 +272,6 @@ class HomeFragment : Fragment() {
                 // Permission not granted
             }
         }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun accessGoogleFit() {
-        val end = LocalDateTime.now()
-        val start = end.minusYears(1)
-        val endSeconds = end.atZone(ZoneId.systemDefault()).toEpochSecond()
-        val startSeconds = start.atZone(ZoneId.systemDefault()).toEpochSecond()
-
-        val readRequest = DataReadRequest.Builder()
-            .aggregate(DataType.AGGREGATE_STEP_COUNT_DELTA)
-            .setTimeRange(startSeconds, endSeconds, TimeUnit.SECONDS)
-            .bucketByTime(1, TimeUnit.DAYS)
-            .build()
-        val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
-        Fitness.getHistoryClient(requireContext(), account)
-            .readData(readRequest)
-            .addOnSuccessListener { response ->
-                // Use response data here
-                Log.i(TAG, "OnSuccess()")
-                checkAndRequestActivityRecognitionPermission()
-                readSteps()
-                getDailySteps()
-            }
-            .addOnFailureListener { e -> Log.d(TAG, "OnFailure()", e) }
     }
 
     private fun recordSteps() {
@@ -194,91 +286,266 @@ class HomeFragment : Fragment() {
 
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun readSteps() {
-        val startTime = LocalDate.now().atStartOfDay(ZoneId.systemDefault())
-        val endTime = LocalDateTime.now().atZone(ZoneId.systemDefault())
+        val start = Calendar.getInstance()
+        start.set(Calendar.HOUR_OF_DAY, 0)
+        start.set(Calendar.MINUTE, 0)
+        start.set(Calendar.SECOND, 0)
+        start.set(Calendar.MILLISECOND, 0)
+        start.set(Calendar.DAY_OF_WEEK, start.firstDayOfWeek)
+        val startDate = Date(start.timeInMillis)
 
-        val datasource = DataSource.Builder()
-            .setAppPackageName("com.google.android.gms")
-            .setDataType(DataType.TYPE_STEP_COUNT_DELTA)
-            .setType(DataSource.TYPE_DERIVED)
-            .setStreamName("estimated_steps")
-            .build()
+        println("START $startDate")
 
-        val request = DataReadRequest.Builder()
-            .aggregate(datasource)
-            .bucketByTime(1, TimeUnit.DAYS)
-            .setTimeRange(startTime.toEpochSecond(), endTime.toEpochSecond(), TimeUnit.SECONDS)
-            .build()
+        start.add(Calendar.DAY_OF_WEEK, 6)
+        start.set(Calendar.HOUR_OF_DAY, 23)
+        start.set(Calendar.MINUTE, 59)
+        start.set(Calendar.SECOND, 59)
+        start.set(Calendar.MILLISECOND, 999)
+        val endDate = Date(start.timeInMillis)
 
-        Fitness.getHistoryClient(requireActivity(), GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions))
-            .readData(request)
-            .addOnSuccessListener { response ->
-                val totalSteps = response.buckets
-                    .flatMap { it.dataSets }
-                    .flatMap { it.dataPoints }
-                    .sumBy { it.getValue(Field.FIELD_STEPS).asInt() }
-                Log.i(TAG, "Total steps: $totalSteps")
+        println("START $endDate")
 
-            }
-    }
+        val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
+        val startDateFormatted = sdf.format(startDate)
+        val endDateFormatted = sdf.format(endDate)
 
-    private fun getDailySteps(){
-        val calendar = Calendar.getInstance()
-        calendar.time = Date()
-        val endTime = calendar.timeInMillis // End time is the current date/time
-        calendar.add(Calendar.DAY_OF_YEAR, -7) // Go back 7 days
-        val startTime = calendar.timeInMillis
+        val textViewWeek = view?.findViewById<TextView>(R.id.textViewWeek)
+        if (textViewWeek != null) {
+            val text = "$startDateFormatted - $endDateFormatted"
+            textViewWeek.text = text
+        }
 
-        val googleSignInAccount = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
+        val googleSignInAccount =
+            GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
 
         val readRequest = DataReadRequest.Builder()
-            .aggregate(DataType.TYPE_STEP_COUNT_DELTA, DataType.AGGREGATE_STEP_COUNT_DELTA)
+            .aggregate(DataType.TYPE_STEP_COUNT_DELTA)
             .bucketByTime(1, TimeUnit.DAYS)
-            .setTimeRange(startTime, endTime, TimeUnit.MILLISECONDS)
+            .setTimeRange(startDate.time, endDate.time, TimeUnit.MILLISECONDS)
             .build()
 
-        val fitnessDataClient = Fitness.getHistoryClient(requireActivity(), googleSignInAccount)
 
-        val dataReadResultTask = fitnessDataClient.readData(readRequest)
-        dataReadResultTask.addOnSuccessListener { dataReadResponse ->
+        val stepCountsMap = ArrayList<MutableMap<String, Any>>()
+
+        val dataReadResult =
+            Fitness.getHistoryClient(requireContext(), googleSignInAccount).readData(readRequest)
+        dataReadResult.addOnSuccessListener { dataReadResponse ->
             if (dataReadResponse.buckets.isNotEmpty()) {
-                val intArray = IntArray(7)
-                val dayArray = arrayOf("","","","","","","")
-                var index = 0
                 for (bucket in dataReadResponse.buckets) {
-                    val dataSet = bucket.dataSets.firstOrNull { it.dataType == DataType.TYPE_STEP_COUNT_DELTA }
-                    if (dataSet != null) {
-                        for (dataPoint in dataSet.dataPoints) {
-                            val timestamp = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
+                    for (dataset in bucket.dataSets) {
+                        for (dataPoint in dataset.dataPoints) {
+                            val date = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
                             val stepCount = dataPoint.getValue(Field.FIELD_STEPS).asInt()
-                            val dateFormat = SimpleDateFormat("E", Locale.getDefault())
-                            val day = dateFormat.format(Date(timestamp)).toString()
+                            val realDate = Date(date)
 
-                            intArray[index] = stepCount
-                            dayArray[index] = day
-                            index += 1
-                            Log.i(TAG,Date(timestamp).toString())
-                            Log.i(TAG,stepCount.toString())
+                            var hasRecord = false
+                            for (stepsRecord in stepCountsMap) {
+                                val recordDate = stepsRecord["date"] as Date
 
+                                if (isSameDate(realDate, recordDate)) {
+                                    val currentSteps = stepsRecord["steps"] as Int
+                                    stepsRecord["steps"] = currentSteps + stepCount
+                                    hasRecord = true
+                                }
+                            }
+
+                            if (hasRecord) {
+                                continue
+                            }
+
+                            val stepsRecord = mutableMapOf<String, Any>(
+                                "date" to realDate,
+                                "steps" to stepCount
+                            )
+                            stepCountsMap.add(stepsRecord)
+                        }
+                    }
+                }
+
+            }
+
+            var totalSteps = 0
+            for (stepsRecord in stepCountsMap) {
+                val steps = stepsRecord["steps"] as Int
+                totalSteps += steps
+            }
+
+            readStepsCalories(totalSteps)
+
+            val textViewSteps = view?.findViewById<TextView>(R.id.textViewSteps)
+            val progressBarSteps = view?.findViewById<CircularProgressIndicator>(R.id.progressBarSteps)
+            if (progressBarSteps != null) {
+                AnimationUtil.animateProgressBar(progressBarSteps, 0, totalSteps, 1000)
+            }
+            if (textViewSteps != null) {
+                //textViewSteps.setText("$totalSteps")
+                AnimationUtil.animateTextViewNumerical(textViewSteps, 0, totalSteps, 1000)
+
+            }
+
+        }
+    }
+
+    private fun readStepsCalories(totalSteps: Int) {
+        // get user
+        val user = Firebase.auth.currentUser
+        user?.let {
+            val uid = it.uid // user ID
+
+            // get user data
+            val db = Firebase.firestore
+            val docRef = db.collection("users").document(uid)
+            docRef.get()
+                .addOnSuccessListener { document ->
+                    if (document != null) {
+
+                        // Weight Chart
+                        updateWeightChart(document)
+
+                        // BMI Indicator
+                        val weight = document.getDouble("weight")?: 1.0
+                        val height = document.getDouble("height")?: 1.0
+
+                        val heightInMeters = height / 100
+
+                        val stride = heightInMeters * 0.414
+                        val distance = stride * totalSteps
+                        val time = distance / 0.9 // slow - 0.9 m/s
+
+                        val totalCalories = time * 2.8 * 3.5 * weight / (200 * 60)
+                        val totalCaloriesInt = totalCalories.toInt()
+
+                        val textViewCaloriesCount = view?.findViewById<TextView>(R.id.textViewCaloriesCount)
+                        val progressBarCalories = view?.findViewById<CircularProgressIndicator>(R.id.progressBarCalories)
+                        if (progressBarCalories != null) {
+                            AnimationUtil.animateProgressBar(progressBarCalories, 0, totalCaloriesInt, 1000)
+                        }
+                        if (textViewCaloriesCount != null) {
+                            AnimationUtil.animateTextViewNumerical(textViewCaloriesCount, 0, totalCaloriesInt, 1000)
                         }
 
-                        updateChart(intArray, dayArray)
+                        Log.d(TAG, "DocumentSnapshot data: ${document.data}")
+                    } else {
+                        Log.d(TAG, "No such document")
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    Log.d(TAG, "get failed with ", exception)
+                }
+        }
+
+    }
+
+    fun getDailyStepCount(context: Context, startDate: Date, endDate: Date) {
+
+        val googleSignInAccount = GoogleSignIn.getAccountForExtension(context, fitnessOptions)
+
+        val readRequest = DataReadRequest.Builder()
+            .aggregate(DataType.TYPE_STEP_COUNT_DELTA)
+            .bucketByTime(1, TimeUnit.DAYS)
+            .setTimeRange(startDate.time, endDate.time, TimeUnit.MILLISECONDS)
+            .build()
+
+        val stepCountsMap = ArrayList<MutableMap<String, Any>>()
+
+        val dataReadResult = Fitness.getHistoryClient(context, googleSignInAccount).readData(readRequest)
+        dataReadResult.addOnSuccessListener { dataReadResponse ->
+            if (dataReadResponse.buckets.isNotEmpty()) {
+                for (bucket in dataReadResponse.buckets) {
+                    for (dataset in bucket.dataSets) {
+                        for (dataPoint in dataset.dataPoints) {
+                            val date = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
+                            val stepCount = dataPoint.getValue(Field.FIELD_STEPS).asInt()
+                            val realDate = Date(date)
+
+                            println("*********************************")
+                            println(stepCount)
+                            println(realDate.toString())
+
+                            var hasRecord = false
+                            for (stepsRecord in stepCountsMap){
+                                val recordDate = stepsRecord["date"] as Date
+
+                                if (isSameDate(realDate, recordDate)){
+                                    val currentSteps = stepsRecord["steps"] as Int
+                                    stepsRecord["steps"] = currentSteps + stepCount
+                                    hasRecord = true
+                                }
+                            }
+
+                            if (hasRecord){
+                                continue
+                            }
+
+                            val stepsRecord = mutableMapOf<String, Any>(
+                                "date" to realDate,
+                                "steps" to stepCount
+                            )
+                            stepCountsMap.add(stepsRecord)
+                        }
 
                     }
                 }
             }
-        }.addOnFailureListener { e ->
-            // Handle the error
+
+            val firstDay = Calendar.getInstance()
+
+            firstDay.time = startDate
+
+            while (firstDay.time <= endDate) {
+                val calendarDate = Date(firstDay.timeInMillis)
+
+                var hasRecord = false
+                for (stepsRecord in stepCountsMap){
+                    val date = stepsRecord["date"] as Date
+
+                    if (isSameDate(calendarDate, date)){
+                        hasRecord = true
+                    }
+                }
+                if (hasRecord){
+                    firstDay.add(Calendar.DAY_OF_MONTH, 1)
+                    continue
+                }
+
+                val newRecord = mutableMapOf<String, Any>(
+                    "date" to calendarDate,
+                    "steps" to 0
+                )
+
+                stepCountsMap.add(newRecord)
+
+                firstDay.add(Calendar.DAY_OF_MONTH, 1)
+            }
+
+            // sort by date
+            stepCountsMap.sortWith(compareBy { it["date"] as Date })
+
+            updateChart(stepCountsMap)
+
         }
     }
 
-    private fun updateChart(data: IntArray, days: Array<String>) {
+    private fun updateChart(dailyStepCounts: ArrayList<MutableMap<String, Any>>) {
         val entries = ArrayList<BarEntry>()
 
+        val stepArray = ArrayList<Int>()
+        val dayArray = ArrayList<String>()
+
+        for (stepsRecord in dailyStepCounts) {
+            val date = stepsRecord["date"] as Date
+            val steps = stepsRecord["steps"] as Int
+
+            stepArray.add(steps)
+
+            val dateFormat = SimpleDateFormat("EEE", Locale.getDefault())
+            val day = dateFormat.format(date).toString()
+            dayArray.add(day)
+        }
+
         // Create data entries for the bar chart from the input data
-        for ((index, value) in data.withIndex()) {
+        for ((index, value) in stepArray.withIndex()) {
             entries.add(BarEntry(index.toFloat(), value.toFloat()))
         }
 
@@ -286,7 +553,7 @@ class HomeFragment : Fragment() {
         set.color = Color.rgb(99,169,31)
 
         val dataSet = BarData(set)
-        dataSet.barWidth = 0.9f; // set custom bar width
+        dataSet.barWidth = 0.9f // set custom bar width
         dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
 
         // disable dragging/zooming
@@ -311,23 +578,23 @@ class HomeFragment : Fragment() {
         // x-axis values
         val formatter: ValueFormatter = object : ValueFormatter() {
             override fun getAxisLabel(value: Float, axis: AxisBase?): String {
-                return days.getOrNull(value.toInt()) ?: value.toString()
+                return dayArray.getOrNull(value.toInt()) ?: value.toString()
             }
         }
         xAxis.granularity = 1f
         xAxis.valueFormatter = formatter
 
         //Disable Legend
-        val legend = barChart.getLegend()
+        val legend = barChart.legend
         legend.isEnabled = false
 
         //Disable Description
-        val description = barChart.getDescription()
+        val description = barChart.description
         description.isEnabled = false
 
         //Animation
-        barChart.animateY(500, Easing.EaseInSine);
-        barChart.animateX(500, Easing.EaseInSine);
+        barChart.animateY(500, Easing.EaseInSine)
+        barChart.animateX(500, Easing.EaseInSine)
 
         // setting the data
         barChart.data = dataSet
@@ -379,6 +646,230 @@ class HomeFragment : Fragment() {
 
     }
 
+    private fun updateWeightChart(document: DocumentSnapshot){
+
+        val weightRecords = document.get("weightRecords") as? ArrayList<Map<Any, Any>> ?: ArrayList()
+        val dataPoints = DoubleArray(7)
+
+        val currentWeight = document.getDouble("weight")
+        if (weightRecords.isEmpty()){ // no entries
+            for (i in 0 until 7) { // loop 7 times
+                dataPoints[i] = currentWeight?: 0.0
+            }
+        } else if (weightRecords.size < 8) {
+            val last7Days = getLast7Days(Date(Calendar.getInstance().timeInMillis))
+            for (i in 0 until 7) { // loop 7 times
+                val day = last7Days[i]
+                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val dayString = sdf.format(day)
+
+                var hasDataPoint = false
+                for (map in weightRecords) {
+                    val mapTimestamp = map["date"] as Timestamp
+                    val weight = map["weight"] as Double
+                    val mapDate = sdf.format(mapTimestamp.toDate())
+                    if (mapDate == dayString) {
+                        dataPoints[i] = weight
+                        hasDataPoint = true
+                        break
+                    }
+                }
+
+                if(!hasDataPoint && i == 0){
+                    dataPoints[i] = currentWeight?: 0.0
+                } else if (!hasDataPoint){
+                    dataPoints[i] = dataPoints[i-1]
+                }
+
+            }
+
+        } else {
+            weightRecords.subList(weightRecords.size - 8, weightRecords.size)
+            val last7Days = getLast7Days(Date(Calendar.getInstance().timeInMillis))
+            for (i in 0 until 7) { // loop 7 times
+                val day = last7Days[i]
+                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val dayString = sdf.format(day)
+
+                var hasDataPoint = false
+                for (map in weightRecords) {
+                    val mapTimestamp = map["date"] as Timestamp
+                    val weight = map["weight"] as Double
+                    val mapDate = sdf.format(mapTimestamp.toDate())
+                    if (mapDate == dayString) {
+                        dataPoints[i] = weight
+                        hasDataPoint = true
+                        break
+                    }
+                }
+
+                if(!hasDataPoint && i == 0){
+                    val weight = weightRecords[0]["weight"] as Double
+                    dataPoints[i] = weight
+                } else if (!hasDataPoint){
+                    dataPoints[i] = dataPoints[i-1]
+                }
+
+            }
+        }
+
+        val days = getPreviousDaysList(7)
+        days.reverse()
+
+        // Create data entries for the bar chart from the input data
+        val entries = ArrayList<Entry>()
+        for ((index, value) in dataPoints.withIndex()) {
+            entries.add(Entry(index.toFloat(), value.toFloat()))
+        }
+
+        val set = LineDataSet(entries, "LineDataSet")
+        set.color = Color.rgb(99,169,31)
+        set.setCircleColor(R.color.green)
+
+        val dataSet = LineData(set)
+        //dataSet.barWidth = 0.9f; // set custom bar width
+        dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
+
+        // disable dragging/zooming
+        lineChart.setTouchEnabled(false)
+
+        //axis styling
+        val xAxis = lineChart.xAxis
+        val yAxisLeft = lineChart.axisLeft
+        val yAxisRight = lineChart.axisRight
+
+        //disable gridlines
+        xAxis.setDrawGridLines(false)
+        // yAxisLeft.setDrawGridLines(false)
+        yAxisRight.setDrawGridLines(false)
+
+        //text color
+        yAxisLeft.textColor = ContextCompat.getColor(requireContext(), R.color.primary)
+        xAxis.textColor = ContextCompat.getColor(requireContext(), R.color.primary)
+        xAxis.position = XAxis.XAxisPosition.BOTTOM
+        yAxisRight.setDrawLabels(false)
+
+        // x-axis values
+        val formatter: ValueFormatter = object : ValueFormatter() {
+            override fun getAxisLabel(value: Float, axis: AxisBase?): String {
+                return days.getOrNull(value.toInt()) ?: value.toString()
+            }
+        }
+        xAxis.granularity = 1f
+        xAxis.valueFormatter = formatter
+
+        //Disable Legend
+        val legend = lineChart.getLegend()
+        legend.isEnabled = false
+
+        //Disable Description
+        val description = lineChart.getDescription()
+        description.isEnabled = false
+
+        //Animation
+        lineChart.animateY(500, Easing.EaseInSine)
+        lineChart.animateX(500, Easing.EaseInSine)
+
+        // setting the data
+        lineChart.data = dataSet
+        //lineChart.setFitBars(true)
+
+        lineChart.invalidate()
+    }
+
+    private fun getPreviousDaysList(numDays: Int): Array<String> {
+        val calendar = Calendar.getInstance()
+        val daysList = mutableListOf<String>()
+
+        for (i in numDays - 1 downTo 0) {
+            val sdf = SimpleDateFormat("EEE", Locale.getDefault())
+            val dayName = sdf.format(calendar.time)
+            daysList.add(dayName)
+
+            // Move to the previous day
+            calendar.add(Calendar.DAY_OF_MONTH, -1)
+        }
+
+        return daysList.toTypedArray()
+    }
+
+    fun getLast7Days(today: Date): List<Date> {
+        val calendar = Calendar.getInstance()
+        calendar.time = today
+
+        val last7Days = mutableListOf<Date>()
+
+        for (i in 0 until 7) {
+            last7Days.add(calendar.time)
+            calendar.add(Calendar.DAY_OF_YEAR, -1)
+        }
+
+        // Reverse the list to get the dates in descending order (from today to 7 days ago)
+        return last7Days.reversed()
+    }
+
+    fun isSameDate(firstDate: Date, secondDate: Date): Boolean {
+        val firstDateCalendar = Calendar.getInstance()
+        firstDateCalendar.time = firstDate
+
+        val secondDateCalendar = Calendar.getInstance()
+        secondDateCalendar.time = secondDate
+
+        return (firstDateCalendar.get(Calendar.YEAR) == secondDateCalendar.get(Calendar.YEAR) &&
+                firstDateCalendar.get(Calendar.MONTH) == secondDateCalendar.get(Calendar.MONTH) &&
+                firstDateCalendar.get(Calendar.DAY_OF_MONTH) == secondDateCalendar.get(Calendar.DAY_OF_MONTH))
+    }
+
+    // BMI
+    private fun setStartMarginAsPercentage(view: View, sibling: View, percentage: Int) {
+        val clampedValue = when {
+            percentage < 1 -> 1
+            percentage > 96 -> 96
+            else -> percentage
+        }
+        val siblingWidth = sibling.width
+        val margin = (siblingWidth * clampedValue / 100)
+
+        val layoutParams = view.layoutParams as ViewGroup.MarginLayoutParams
+        layoutParams.marginStart = margin
+
+        view.layoutParams = layoutParams
+    }
+
+    private fun showBMI(weight: Double, height: Double) {
+        var bmi = weight / (Math.pow((height/100), 2.0)) // weight (kg) / [height (m)]^2
+        bmi = "%.2f".format(bmi).toDouble()
+
+        val percentageMargin = ((bmi / 50)*100).toInt() // Set the desired percentage
+        setStartMarginAsPercentage(targetView, siblingView, percentageMargin)
+
+        val rangeValue = when {
+            bmi < 18.6 -> "underweight"
+            bmi < 25 -> "healthy weight"
+            bmi < 30 -> "overweight"
+            bmi > 30 -> "obese"
+            else -> "healthy weight"
+        }
+        val fullText = "Your current BMI is $bmi. You are within the $rangeValue range"
+        val wordToColor = "$rangeValue"
+        val spannableString = SpannableString(fullText)
+
+        val startIndex = fullText.indexOf(wordToColor)
+        val endIndex = startIndex + wordToColor.length
+
+        val colorResourceId = when {
+            bmi < 18.6 -> R.color.blue
+            bmi < 25 -> R.color.green
+            bmi < 30 -> R.color.orange
+            bmi > 30 -> R.color.red
+            else -> R.color.green
+        }
+        val color = context?.let { ContextCompat.getColor(it, colorResourceId) }
+        spannableString.setSpan(color?.let { ForegroundColorSpan(it) }, startIndex, endIndex, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+
+        textView.text = spannableString
+    }
+
     private fun checkAndRequestActivityRecognitionPermission() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACTIVITY_RECOGNITION)
             != PackageManager.PERMISSION_GRANTED) {
@@ -398,7 +889,6 @@ class HomeFragment : Fragment() {
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
-        println(requestCode)
         when (requestCode) {
             MY_PERMISSIONS_REQUEST_ACTIVITY_RECOGNITION -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -410,6 +900,297 @@ class HomeFragment : Fragment() {
             }
             // Handle other permission requests if needed
         }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun createNotificationChannel() {
+        val name = getString(R.string.channel_name)
+        val descriptionText = getString(R.string.channel_description)
+        val importance = NotificationManager.IMPORTANCE_DEFAULT
+        val channel = NotificationChannel("aktibo", name, importance).apply {
+            description = descriptionText
+        }
+        // Register the channel with the system.
+        val notificationManager: NotificationManager =
+            requireContext().getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
+    }
+
+    private fun scheduleNotification(triggerTime: Long, title: String, text: String, setTime:String) {
+        val intent = Intent(requireContext(), AlarmReceiver::class.java)
+        intent.putExtra("titleExtra", title)
+        intent.putExtra("textExtra", text)
+        intent.putExtra("setTime", setTime)
+
+        var notificationID = 0
+
+        notificationID = when (setTime) {
+            "morning" -> 1010
+            "afternoon" -> 1011
+            "evening" -> 1012
+            else -> 2020
+        }
+
+        // val rnds = (0..7777).random()
+        val pendingIntent = PendingIntent.getBroadcast(
+            requireContext(),
+            notificationID,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val alarmManager = requireContext().getSystemService(AppCompatActivity.ALARM_SERVICE) as AlarmManager
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            triggerTime,
+            pendingIntent
+        )
+    }
+
+    private fun getTriggerTime(hour: Int, minute: Int): Long {
+        val calendar = java.util.Calendar.getInstance().apply {
+            timeInMillis = System.currentTimeMillis()
+            set(java.util.Calendar.HOUR_OF_DAY, hour)
+            set(java.util.Calendar.MINUTE, minute)
+            set(java.util.Calendar.SECOND, 0)
+        }
+
+        // If the specified time has already passed today, set it for the next day
+        if (calendar.timeInMillis <= System.currentTimeMillis()) {
+            calendar.add(java.util.Calendar.DAY_OF_YEAR, 1)
+        }
+
+        val calendar2 = java.util.Calendar.getInstance()
+        System.out.println("Current Date and Time: " + calendar2.getTime());
+        System.out.println("Notif Date and Time: " + calendar.getTime());
+
+        return calendar.timeInMillis
+    }
+
+    private fun sendMotivationalNotif(){
+        val helper = MyHelperFunctions()
+        if(!isTodayThursday()){
+            helper.setPreferenceString("canPostWeightNotif", true, requireContext())
+            return
+        }
+
+        // makes it only show once per day
+        val canPostWeightNotif = helper.getPreferenceString("canPostWeightNotif", requireContext())
+        // user has show notifs on
+        val NotifsPref = helper.getPreferenceString("NotifsPref", requireContext())
+        if (canPostWeightNotif && NotifsPref){
+            checkWeightGoalProgress()
+        }
+
+    }
+
+    fun checkWeightGoalProgress(){
+        val user = Firebase.auth.currentUser
+        user?.let {
+            val uid = it.uid // user ID
+            val db = Firebase.firestore
+            val docRef = db.collection("users").document(uid)
+            docRef.get()
+                .addOnSuccessListener { document ->
+                    if (document != null) {
+                        val weightRecords = document.get("weightRecords") as? ArrayList<Map<Any, Any>> ?: ArrayList()
+
+                        val dataList = mutableListOf<Double>()
+
+                        val currentWeight = document.getDouble("weight")
+                        if (weightRecords.isEmpty()){ // no entries
+                            for (i in 0 until 7) { // loop 7 times
+                                dataList.add(currentWeight?: 0.0)
+                            }
+                        } else if (weightRecords.size < 8) {
+                            val last7Days = getLast7Days(Date(Calendar.getInstance().timeInMillis))
+                            for (i in 0 until 7) { // loop 7 times
+                                val day = last7Days[i]
+                                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                val dayString = sdf.format(day)
+
+                                var hasDataPoint = false
+                                for (map in weightRecords) {
+                                    val mapTimestamp = map["date"] as Timestamp
+                                    val weight = map["weight"] as Double
+                                    val mapDate = sdf.format(mapTimestamp.toDate())
+                                    if (mapDate == dayString) {
+                                        dataList.add(weight)
+                                        hasDataPoint = true
+                                        break
+                                    }
+                                }
+
+                                if(!hasDataPoint && i == 0){
+                                    dataList.add(currentWeight?: 0.0)
+                                } else if (!hasDataPoint){
+                                    dataList.add(dataList.last())
+                                }
+
+                            }
+
+                        } else {
+                            weightRecords.subList(weightRecords.size - 8, weightRecords.size)
+                            val last7Days = getLast7Days(Date(Calendar.getInstance().timeInMillis))
+                            for (i in 0 until 7) { // loop 7 times
+                                val day = last7Days[i]
+                                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                val dayString = sdf.format(day)
+
+                                var hasDataPoint = false
+                                for (map in weightRecords) {
+                                    val mapTimestamp = map["date"] as Timestamp
+                                    val weight = map["weight"] as Double
+                                    val mapDate = sdf.format(mapTimestamp.toDate())
+                                    if (mapDate == dayString) {
+                                        dataList.add(weight)
+                                        hasDataPoint = true
+                                        break
+                                    }
+                                }
+
+                                if(!hasDataPoint && i == 0){
+                                    val weight = weightRecords[0]["weight"] as Double
+                                    dataList.add(weight)
+                                } else if (!hasDataPoint){
+                                    dataList.add(dataList.last())
+                                }
+
+                            }
+                        }
+
+                        val weightGoal = document.getDouble("weightGoal")?.toInt()
+                        val targetValue = document.getDouble("targetWeight") ?: 0.0
+
+                        val helper = MyHelperFunctions()
+                        if (weightGoal == 0){
+                            val trending = isStayingAroundTarget(dataList, targetValue, 3.0)
+
+                            if (trending) {
+                                createNotification(2020, "Keep Going!", "You're doing great on reaching your weight goal", requireContext())
+                                helper.setPreferenceString("canPostWeightNotif", false, requireContext())
+                            } else {
+                                createNotification(2020, "Let's change our game plan!", "You're falling a bit behind on reaching your weight goal", requireContext())
+                                helper.setPreferenceString("canPostWeightNotif", false, requireContext())
+                            }
+                        } else {
+                            val trending = isTrendingTowardsTarget(dataList, targetValue)
+
+                            if (trending) {
+                                createNotification(2020, "Keep Going!", "You're doing great on reaching your weight goal", requireContext())
+                                helper.setPreferenceString("canPostWeightNotif", false, requireContext())
+                            } else {
+                                createNotification(2020, "Let's change our game plan!", "You're falling a bit behind on reaching your weight goal", requireContext())
+                                helper.setPreferenceString("canPostWeightNotif", false, requireContext())
+                            }
+                        }
+
+
+                    }
+                }
+        }
+    }
+
+    fun isTodayThursday(): Boolean {
+        val calendar = Calendar.getInstance()
+        val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+
+        // Calendar.DAY_OF_WEEK returns values from 1 (Sunday) to 7 (Saturday)
+        return dayOfWeek == Calendar.THURSDAY
+    }
+
+    fun isTrendingTowardsTarget(data: List<Double>, target: Double): Boolean {
+        if (data.isEmpty()) {
+            // Handle empty list case
+            return false
+        }
+
+        // Calculate the average of the data
+        val average = data.average()
+
+        // Check if the average is closer to the target than the first element in the list
+        val firstElement = data.first()
+        return Math.abs(average - target) < Math.abs(firstElement - target)
+    }
+
+    fun isStayingAroundTarget(data: List<Double>, target: Double, threshold: Double): Boolean {
+        if (data.isEmpty()) {
+            // Handle empty list case
+            return false
+        }
+
+        // Calculate the mean of the data
+        val mean = data.average()
+
+        // Calculate the standard deviation of the data
+        val standardDeviation = calculateStandardDeviation(data, mean)
+
+        // Check if the standard deviation is within the threshold
+        return standardDeviation < threshold
+    }
+
+    fun calculateStandardDeviation(data: List<Double>, mean: Double): Double {
+        val sumSquaredDifferences = data.map { (it - mean).pow(2) }.sum()
+        return sqrt(sumSquaredDifferences / data.size)
+    }
+
+    private fun createNotification(id: Int, title: String, text: String, context: Context){
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+
+        val builder = context.let {
+            NotificationCompat.Builder(it, "aktibo")
+                .setSmallIcon(R.drawable.aktibo_icon)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                // Set the intent that fires when the user taps the notification.
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+        }
+
+        with(context.let { NotificationManagerCompat.from(it) }) {
+            if (ActivityCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return
+            }
+            this.notify(id, builder.build())
+        }
+
+        updateNotificationLog(title, text)
+    }
+
+    private fun updateNotificationLog(title: String, text: String){
+        val auth = FirebaseAuth.getInstance()
+        val currentUser = auth.currentUser
+        val uid = currentUser?.uid
+
+        val db = FirebaseFirestore.getInstance()
+        val documentReference = db.collection("users").document(uid.toString())
+
+        val newElement = hashMapOf(
+            "message" to "${title}\n${text}",
+            "time" to Timestamp.now()
+        )
+
+        documentReference.update("notifications", FieldValue.arrayUnion(newElement))
+            .addOnSuccessListener {
+                Log.d(LoginActivity.TAG, "DocumentSnapshot successfully updated!")
+            }
+            .addOnFailureListener { e ->
+                Log.w(LoginActivity.TAG, "Error updating document", e)
+            }
     }
 
 }

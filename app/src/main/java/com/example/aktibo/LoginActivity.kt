@@ -38,6 +38,7 @@ import com.google.firebase.auth.PhoneAuthOptions
 import com.google.firebase.auth.PhoneAuthProvider
 import com.google.firebase.auth.PhoneMultiFactorGenerator
 import com.google.firebase.auth.PhoneMultiFactorInfo
+import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
@@ -123,6 +124,7 @@ class LoginActivity : AppCompatActivity() {
                 Log.d(TAG, "firebaseAuthWithGoogle:" + account.id)
                 firebaseAuthWithGoogle(account.idToken!!)
             } catch (e: ApiException) {
+                logout()
                 // Google Sign In failed
                 Log.w(TAG, "Google sign in failed", e)
                 Toast.makeText(this, "Authentication failed.", Toast.LENGTH_SHORT).show()
@@ -132,70 +134,65 @@ class LoginActivity : AppCompatActivity() {
 
     private fun firebaseAuthWithGoogle(idToken: String) {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
-        auth.signInWithCredential(credential)
-            .addOnCompleteListener(this) { task ->
-                if (task.isSuccessful) {
-                    // Sign in success, update UI with the signed-in user's information
-                    Log.d(TAG, "signInWithCredential:success")
-                    val user = auth.currentUser
-                    val userID = user?.uid
+        auth.signInWithCredential(credential).addOnCompleteListener(this) { task ->
+            if (task.isSuccessful) {
+                // Sign in success
+                Log.d(TAG, "signInWithCredential:success")
+                val user = auth.currentUser ?: return@addOnCompleteListener
+                val userID = user.uid
 
-                    if (userID != null) {
-                        hasUserEntry(userID) { isComplete ->
-                            when (isComplete) {
-                                true -> {
-                                    val intent = Intent(this, MainActivity::class.java)
-                                    startActivity(intent)
-                                    finish()
-                                }
+                hasUserEntry(userID) { isComplete ->
+                    when (isComplete) {
+                        true -> {
+                            val intent = Intent(this, MainActivity::class.java)
+                            startActivity(intent)
+                            finish()
+                        }
 
-                                false -> {
-                                    val intent = Intent(this, NewUserActivity::class.java)
-                                    startActivity(intent)
-                                    finish()
-                                }
-                            }
+                        false -> {
+                            val intent = Intent(this, NewUserActivity::class.java)
+                            startActivity(intent)
+                            finish()
                         }
                     }
-
-
                 }
-                else if (task.exception is FirebaseAuthMultiFactorException) {
-                    // The user is a multi-factor user. Second factor challenge is required.
-                    val multiFactorResolver = (task.exception as FirebaseAuthMultiFactorException).resolver
+            }
+            else if (task.exception is FirebaseAuthMultiFactorException) {
+                // The user is a multi-factor user. Second factor challenge is required.
 
-                    val items = mutableListOf<String>()
+                val multiFactorResolver = (task.exception as FirebaseAuthMultiFactorException).resolver
+                val items = mutableListOf<String>()
 
-                    for ((index, item) in multiFactorResolver.hints.withIndex()) {
-                        val selectedHint = multiFactorResolver.hints[index] as PhoneMultiFactorInfo
-                        items.add(selectedHint.phoneNumber)
-                    }
+                for ((index, _) in multiFactorResolver.hints.withIndex()) {
+                    val selectedHint = multiFactorResolver.hints[index] as PhoneMultiFactorInfo
+                    items.add(selectedHint.phoneNumber)
+                }
 
-                    val itemsArray = items.toTypedArray()
+                val itemsArray = items.toTypedArray()
 
-                    MaterialAlertDialogBuilder(this)
-                        .setTitle("Choose a phone number")
-                        .setItems(itemsArray) { dialog, which ->
+                // Select phone number
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("Choose a phone number")
+                    .setItems(itemsArray) { dialog, which ->
+                        Toast.makeText(this, "Sending OTP code. Please wait.", Toast.LENGTH_SHORT).show()
+                        val selectedHint = multiFactorResolver.hints[which] as PhoneMultiFactorInfo
+                        val phoneAuthOptions = PhoneAuthOptions.newBuilder()
+                            .setActivity(this)
+                            .setMultiFactorHint(selectedHint)
+                            .setTimeout(30L, TimeUnit.SECONDS)
+                            .setMultiFactorSession(multiFactorResolver.session)
+                            .setCallbacks(callbacks) // Optionally disable instant verification.
+                            // .requireSmsValidation(true)
+                            .build()
 
-                            val selectedHint = multiFactorResolver.hints[which] as PhoneMultiFactorInfo
-                            val phoneAuthOptions = PhoneAuthOptions.newBuilder()
-                                .setActivity(this)
-                                .setMultiFactorHint(selectedHint)
-                                .setTimeout(30L, TimeUnit.SECONDS)
-                                .setMultiFactorSession(multiFactorResolver.session)
-                                .setCallbacks(callbacks) // Optionally disable instant verification.
-                                // .requireSmsValidation(true)
-                                .build()
                             PhoneAuthProvider.verifyPhoneNumber(phoneAuthOptions)
 
                             // input OTP
                             val inputField = EditText(this)
-
                             inputField.layoutParams = ViewGroup.LayoutParams(
                                 300, // Set the width to MATCH_PARENT
                                 ViewGroup.LayoutParams.MATCH_PARENT // Use WRAP_CONTENT for height
                             )
-
                             inputField.gravity = Gravity.CENTER
                             inputField.inputType = InputType.TYPE_CLASS_NUMBER
 
@@ -205,14 +202,19 @@ class LoginActivity : AppCompatActivity() {
                                 LinearLayout.LayoutParams.WRAP_CONTENT // Use WRAP_CONTENT for height
                             )
                             layout.gravity = Gravity.CENTER // center content
-
                             layout.addView(inputField)
 
+                            // input OTP Code
                             MaterialAlertDialogBuilder(this)
                                 .setTitle("Please enter your OTP code")
                                 .setView(layout)
                                 .setPositiveButton("OK") { dialog, _ ->
                                     val verificationCode = inputField.text.toString().trim()
+
+                                    if (!this::verificationId.isInitialized){
+                                        Toast.makeText(this, "Invalid OTP code.", Toast.LENGTH_SHORT).show()
+                                        return@setPositiveButton
+                                    }
                                     val credential = PhoneAuthProvider.getCredential(verificationId, verificationCode)
 
                                     val multiFactorAssertion: MultiFactorAssertion =
@@ -226,49 +228,60 @@ class LoginActivity : AppCompatActivity() {
                                                 // User successfully signed in with the
                                                 // second factor phone number.
 
-                                                val user = auth.currentUser
+                                                val user = auth.currentUser ?: return@addOnCompleteListener
 
-                                                if (user != null) {
-                                                    user.multiFactor.session.addOnCompleteListener { task ->
-                                                        if (task.isSuccessful) {
+                                                user.multiFactor.session.addOnCompleteListener { task ->
+                                                    if (task.isSuccessful) {
 
-                                                            Log.d(TAG, "signInWithCredential:success")
-                                                            val user = auth.currentUser
-                                                            val userID = user?.uid
+                                                        Log.d(TAG, "signInWithCredential:success")
+                                                        val user = auth.currentUser ?: return@addOnCompleteListener
+                                                        val userID = user.uid
 
-                                                            if (userID != null) {
-                                                                hasUserEntry(userID) { isComplete ->
-                                                                    when (isComplete) {
-                                                                        true -> {
-                                                                            val intent = Intent(this, MainActivity::class.java)
-                                                                            startActivity(intent)
-                                                                            finish()
-                                                                        }
+                                                        hasUserEntry(userID) { isComplete ->
+                                                            when (isComplete) {
+                                                                true -> {
+                                                                    val intent = Intent(this, MainActivity::class.java)
+                                                                    startActivity(intent)
+                                                                    finish()
+                                                                }
 
-                                                                        false -> {
-                                                                            val intent = Intent(this, NewUserActivity::class.java)
-                                                                            startActivity(intent)
-                                                                            finish()
-                                                                        }
-                                                                    }
+                                                                false -> {
+                                                                    val intent = Intent(this, NewUserActivity::class.java)
+                                                                    startActivity(intent)
+                                                                    finish()
                                                                 }
                                                             }
-
                                                         }
+
+                                                    } else {
+                                                        logout()
+                                                        Log.w(TAG, "signInWithCredential:failure", task.exception)
+                                                        Toast.makeText(this, "Authentication failed.", Toast.LENGTH_SHORT).show()
                                                     }
                                                 }
+                                            } else {
+                                                logout()
+                                                Log.w(TAG, "signInWithCredential:failure", task.exception)
+                                                Toast.makeText(this, "Invalid OTP Code.", Toast.LENGTH_SHORT).show()
                                             }
 
                                         }
 
                                     dialog.dismiss()
                                 }
+                                .setOnCancelListener() {
+                                    logout()
+                                }
                                 .show()
                         }
-                        .show()
+                    .setOnCancelListener() {
+                        logout()
+                    }
+                    .show()
 
                 }
                 else {
+                    logout()
                     // If sign in fails, display a message to the user.
                     Log.w(TAG, "signInWithCredential:failure", task.exception)
                     Toast.makeText(this, "Authentication failed.", Toast.LENGTH_SHORT).show()
@@ -317,6 +330,22 @@ class LoginActivity : AppCompatActivity() {
             this@LoginActivity.verificationId = verificationId
             this@LoginActivity.forceResendingToken = forceResendingToken
             // ...
+        }
+    }
+
+    private fun logout(){
+        try {
+            Firebase.auth.signOut()
+            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(getString(R.string.default_web_client_id))
+                .requestEmail()
+                .build()
+            val googleSignInClient: GoogleSignInClient = GoogleSignIn.getClient(this, gso)
+            googleSignInClient.signOut()
+            println("logout success")
+        } catch(e: Exception) {
+            println("logout failed")
+            println(e)
         }
     }
 

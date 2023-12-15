@@ -13,7 +13,7 @@
         <item name="android:navigationBarColor">@color/off_white</item>
 
         <!--Text Input-->
-        <item name="textInputStyle">@style/CustomTextInputLayout.Light</item>
+        <item name="textInputStyle">@style/CustomTextInputLayout.Dark</item>
 
         <!--Button-->
 <!--        <item name="buttonStyle">@style/CustomButtonStyle.Light</item>-->

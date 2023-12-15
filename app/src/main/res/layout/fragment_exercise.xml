@@ -41,7 +41,7 @@
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/exerciseLayout"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_gravity="center">
 
@@ -58,15 +58,43 @@
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"/>
 
-                <CalendarView
-                    android:id="@+id/calendarView"
-                    android:layout_width="wrap_content"
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/calendarCardView"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:theme="@style/CustomCalendarView"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/calendarTitle" />
+                    app:cardBackgroundColor="@color/secondary"
+                    android:backgroundTint="@color/transparent"
+                    app:cardCornerRadius="20dp"
+                    android:foreground="@drawable/solid_border"
+                    app:layout_constraintLeft_toLeftOf="parent"
+                    app:layout_constraintRight_toRightOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/calendarTitle">
+
+                    <com.applandeo.materialcalendarview.CalendarView
+                        android:id="@+id/calendarView"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginEnd="12dp"
+                        android:layout_marginTop="12dp"
+                        android:layout_marginBottom="20dp"
+                        app:firstDayOfWeek="monday"
+                        app:swipeEnabled="false"
+                        app:headerColor="@color/secondary"
+                        app:headerLabelColor="@color/primary"
+                        app:pagesColor="@color/secondary"
+                        app:daysLabelsColor="@color/primary"
+                        app:abbreviationsLabelsColor="@color/primary"
+                        app:abbreviationsBarColor="@color/secondary"
+                        app:disabledDaysLabelsColor="@color/primary"
+                        app:anotherMonthsDaysLabelsColor="@color/fainted_primary"
+                        app:todayLabelColor="@color/primary"
+                        app:layout_constraintLeft_toLeftOf="parent"
+                        app:layout_constraintRight_toRightOf="parent"
+                        app:layout_constraintTop_toBottomOf="@id/calendarTitle" />
+
+                </androidx.cardview.widget.CardView>
 
                 <TextView
                     android:id="@+id/exerciseGoalMessage"
@@ -81,7 +109,7 @@
                     android:textSize="15sp"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@id/calendarView" />
+                    app:layout_constraintTop_toBottomOf="@id/calendarCardView" />
 
                 <FrameLayout
                     android:id="@+id/mealRecipesButtonFrame"

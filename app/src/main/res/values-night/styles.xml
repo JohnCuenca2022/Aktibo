@@ -19,4 +19,9 @@
         <item name="strokeColor">@color/white</item>
     </style>
 
+    <style name="CustomMaterialButtonFood" parent="Widget.MaterialComponents.Button">
+        <item name="android:backgroundTint">@color/off_black</item>
+        <item name="strokeColor">@color/green</item>
+    </style>
+
 </resources>

@@ -5,6 +5,12 @@
         <item>lbs</item>
     </string-array>
 
+    <string-array name="weight_goal_array">
+        <item>Maintain Weight</item>
+        <item>Gain Weight</item>
+        <item>Lose Weight</item>
+    </string-array>
+
     <string-array name="height_array">
         <item>cm</item>
         <item>in</item>

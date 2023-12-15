@@ -23,7 +23,7 @@
                 android:layout_height="match_parent">
 
                 <TextView
-                    android:id="@+id/newMomentTitle"
+                    android:id="@+id/newMomentTitleTextView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
@@ -36,17 +36,17 @@
                     app:layout_constraintTop_toTopOf="parent"/>
 
                 <TextView
-                    android:id="@+id/captionTitle"
+                    android:id="@+id/captionTitleTextView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="40dp"
+                    android:layout_marginTop="30dp"
                     android:fontFamily="@font/roboto_medium"
                     android:gravity="start|center_vertical"
                     android:text="What's your story?"
                     android:textColor="@color/primary"
                     android:textSize="16sp"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/newMomentTitle"/>
+                    app:layout_constraintTop_toBottomOf="@+id/newMomentTitleTextView"/>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/caption"
@@ -56,12 +56,12 @@
                     app:boxCornerRadiusTopEnd="0dp"
                     app:boxCornerRadiusBottomStart="0dp"
                     app:boxCornerRadiusBottomEnd="0dp"
-                    app:layout_constraintTop_toBottomOf="@+id/captionTitle"
+                    app:layout_constraintTop_toBottomOf="@+id/captionTitleTextView"
                     app:counterEnabled="true"
                     app:counterMaxLength="500">
 
                     <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/yourEditText"
+                        android:id="@+id/newMomentCaption"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="textMultiLine"
@@ -69,21 +69,60 @@
                         android:hint="Write a caption" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <TextView
-                    android:id="@+id/imageTitle"
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/textWarningCardView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="40dp"
+                    android:backgroundTint="#d81a1a"
+                    android:visibility="gone"
+                    app:cardCornerRadius="6dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/caption">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent">
+
+                        <ImageView
+                            android:layout_width="30dp"
+                            android:layout_height="30dp"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginLeft="10dp"
+                            android:src="@drawable/error_icon"/>
+
+                        <TextView
+                            android:id="@+id/textWarningTextView"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="9dp"
+                            android:paddingBottom="10dp"
+                            android:fontFamily="@font/roboto_medium"
+                            android:layout_marginLeft="10dp"
+                            android:text="User Guidelines Violation.\nInappropriate words:"
+                            android:textColor="@color/off_white"
+                            android:textSize="16sp"
+                            android:visibility="visible"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toBottomOf="@+id/imageCardView"/>
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+
+                <TextView
+                    android:id="@+id/imageTitleTextView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
                     android:fontFamily="@font/roboto_medium"
                     android:gravity="start|center_vertical"
                     android:text="Share your view"
                     android:textColor="@color/primary"
                     android:textSize="16sp"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/caption"/>
+                    app:layout_constraintTop_toBottomOf="@+id/textWarningCardView"/>
 
                 <androidx.cardview.widget.CardView
-                    android:id="@+id/cardView"
+                    android:id="@+id/imageCardView"
                     android:layout_width="match_parent"
                     android:layout_height="300dp"
                     android:layout_marginTop="10dp"
@@ -92,36 +131,101 @@
                     app:cardCornerRadius="20dp"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/imageTitle"
+                    app:layout_constraintTop_toBottomOf="@+id/imageTitleTextView"
                     android:foreground="@drawable/dashed_border">
 
-                    <androidx.viewpager.widget.ViewPager
-                        android:id="@+id/viewPager"
+                    <ImageView
+                        android:id="@+id/newMomentImage"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:scaleType="centerInside"
-                        app:cardBackgroundColor="@color/transparent"
-                        android:backgroundTint="@color/transparent"
                         app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintStart_toStartOf="parent" />
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent" />
+
+                    <ImageView
+                        android:id="@+id/placeholderImage"
+                        android:layout_width="100dp"
+                        android:layout_height="100dp"
+                        android:src="@drawable/image_icon"
+                        android:scaleType="centerInside"
+                        android:layout_gravity="center"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent" />
 
                 </androidx.cardview.widget.CardView>
 
 
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/imageWarningCardView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:backgroundTint="#d81a1a"
+                    android:visibility="gone"
+                    app:cardCornerRadius="6dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/imageCardView">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent">
+
+                        <ImageView
+                            android:layout_width="30dp"
+                            android:layout_height="30dp"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginLeft="10dp"
+                            android:src="@drawable/error_icon"/>
+
+                        <TextView
+                            android:id="@+id/imageWarningTextView"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="9dp"
+                            android:paddingBottom="10dp"
+                            android:fontFamily="@font/roboto_medium"
+                            android:layout_marginLeft="10dp"
+                            android:text="User Guidelines Violation.\nImage contains:"
+                            android:textColor="@color/off_white"
+                            android:textSize="16sp"
+                            android:visibility="visible"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toBottomOf="@+id/imageCardView"/>
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/selectImageButton"
+                    android:id="@+id/createNewMomentButton"
                     android:layout_width="300dp"
                     android:layout_height="55dp"
-                    android:text="Add Image/s"
+                    android:layout_marginTop="30dp"
+                    android:layout_marginBottom="30dp"
+                    android:text="Create Post"
                     android:textColor="@color/white"
-                    app:backgroundTint="@color/green"
+                    style="@style/MaterialButtonStyleChanging"
                     app:cornerRadius="20dp"
-                    android:layout_marginTop="20dp"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/cardView"
+                    app:layout_constraintTop_toBottomOf="@+id/imageWarningCardView"
                     app:textAllCaps="false" />
+
+                <ProgressBar
+                    android:id="@+id/createNewMomentButtonProgressBar"
+                    style="?android:attr/progressBarStyle"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:elevation="2dp"
+                    android:visibility="gone"
+                    app:layout_constraintTop_toTopOf="@+id/createNewMomentButton"
+                    app:layout_constraintStart_toStartOf="@id/createNewMomentButton"
+                    app:layout_constraintEnd_toEndOf="@+id/createNewMomentButton"
+                    app:layout_constraintBottom_toBottomOf="@+id/createNewMomentButton"/>
+
 
             </androidx.constraintlayout.widget.ConstraintLayout>
 

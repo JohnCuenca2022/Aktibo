@@ -6,14 +6,15 @@ plugins {
 
 android {
     namespace 'com.example.aktibo'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.example.aktibo"
-        minSdk 24
-        targetSdk 33
+        minSdk 26
+        targetSdk 34
         versionCode 1
         versionName "1.0"
+        multiDexEnabled true
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -26,10 +27,17 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+        applicationVariants.all { variant ->
+            variant.outputs.each { output ->
+                output.outputFileName = "./sb2-nov-29-hotfix-3.apk"
+            }
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+        // Enable support for the new language APIs
+        coreLibraryDesugaringEnabled true
     }
     kotlinOptions {
         jvmTarget = '1.8'
@@ -48,10 +56,23 @@ android {
 }
 
 dependencies {
-
+    implementation 'com.applandeo:material-calendar-view:1.9.0-rc03'
+    implementation 'com.kizitonwose.calendar:view:2.0.0'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+    implementation 'org.tensorflow:tensorflow-lite:2.8.0'
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'io.github.elye:loaderviewlibrary:3.0.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.9.1'
     implementation "androidx.lifecycle:lifecycle-viewmodel:2.3.1"
     implementation "androidx.lifecycle:lifecycle-livedata:2.3.1"
-    implementation 'org.apache.poi:poi:3.17'
+    implementation ('org.apache.poi:poi:3.17') {
+        exclude group: 'org.apache.xmlbeans', module: 'xmlbeans'
+    }
+    implementation ('org.apache.poi:poi-ooxml:3.17') {
+        exclude group: 'org.apache.xmlbeans', module: 'xmlbeans'
+    }
+    implementation "com.itextpdf:itextpdf:5.5.13.2"
     implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
     implementation 'com.squareup.picasso:picasso:2.71828'
     implementation 'androidx.core:core-ktx:1.8.0'
