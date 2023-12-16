@@ -48,6 +48,9 @@ class WeightGoalFragment : Fragment() {
 
     private lateinit var records: ArrayList<Map<Any, Any>>
 
+    var canShowCreateNewRecordDialog = true
+    var canShowChangeWeightGoalDialog = true
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -58,7 +61,11 @@ class WeightGoalFragment : Fragment() {
         // create new weight record
         createNewRecordButton = view.findViewById(R.id.createNewRecordButton)
         createNewRecordButton.setOnClickListener{
-            showNewRecordDialog()
+            if (canShowCreateNewRecordDialog){
+                canShowCreateNewRecordDialog = false
+                showNewRecordDialog()
+            }
+
         }
 
         // load press animations
@@ -70,7 +77,10 @@ class WeightGoalFragment : Fragment() {
             // Apply fadeOut animation when pressed
             weightGoalButton.startAnimation(fadeOut)
 
-            showChangeWeightGoalDialog()
+            if (canShowChangeWeightGoalDialog){
+                canShowChangeWeightGoalDialog = false
+                showChangeWeightGoalDialog()
+            }
 
             // Apply fadeIn animation when released
             weightGoalButton.startAnimation(fadeIn)
@@ -199,6 +209,13 @@ class WeightGoalFragment : Fragment() {
             .setNegativeButton("Cancel") { dialog, which ->
                 // Handle negative button click
                 dialog.dismiss()
+                canShowCreateNewRecordDialog = true
+            }
+            .setOnCancelListener{
+                canShowCreateNewRecordDialog = true
+            }
+            .setOnDismissListener{
+                canShowCreateNewRecordDialog = true
             }
 
         val dialog = builder.create()
@@ -206,6 +223,7 @@ class WeightGoalFragment : Fragment() {
         dialog.setOnShowListener {
             val positiveButton = dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
             positiveButton.setOnClickListener {
+                canShowCreateNewRecordDialog = true
                 val weightEditText = view.findViewById<EditText>(R.id.weightEditText)
 
                 if (weightEditText.text.toString().trim() == ""){
@@ -393,8 +411,6 @@ class WeightGoalFragment : Fragment() {
                         weightGoalSpinner.setSelection(weightGoalID)
 
 
-
-
                         targetWeightEditText.setText(formatDouble(targetWeight))
 
                         // Set up the dialog builder
@@ -405,6 +421,13 @@ class WeightGoalFragment : Fragment() {
                             .setNegativeButton("Cancel") { dialog, which ->
                                 // Handle negative button click
                                 dialog.dismiss()
+                                canShowChangeWeightGoalDialog = true
+                            }
+                            .setOnCancelListener {
+                                canShowChangeWeightGoalDialog = true
+                            }
+                            .setOnDismissListener {
+                                canShowChangeWeightGoalDialog = true
                             }
 
                         val dialog = builder.create()
@@ -412,6 +435,7 @@ class WeightGoalFragment : Fragment() {
                         dialog.setOnShowListener {
                             val positiveButton = dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
                             positiveButton.setOnClickListener {
+                                canShowChangeWeightGoalDialog = true
                                 val newTargetWeight = targetWeightEditText.text.toString().trim()
                                 if (newTargetWeight == ""){
                                     targetWeightEditText.error = "Weight cannot be empty"

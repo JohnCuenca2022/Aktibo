@@ -83,6 +83,9 @@ class DetailedWeightGraphFragment : Fragment() {
     private lateinit var datePickerButton: Button
     private lateinit var workbook: Workbook
 
+    var canShowDatePicker = true
+    var canShowGenerateReportDialog = true
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -135,7 +138,10 @@ class DetailedWeightGraphFragment : Fragment() {
 
         datePickerButton = view.findViewById(R.id.datePickerButton)
         datePickerButton.setOnClickListener{
-            datePicker.show(parentFragmentManager, datePicker.toString())
+            if (canShowDatePicker) {
+                canShowDatePicker = false
+                datePicker.show(parentFragmentManager, datePicker.toString())
+            }
         }
 
         datePicker.addOnPositiveButtonClickListener { selection ->
@@ -159,6 +165,15 @@ class DetailedWeightGraphFragment : Fragment() {
             linearLayout.visibility = View.VISIBLE
 
             getWeightRecord(Date(startDate), Date(endDate))
+
+            canShowDatePicker = true
+        }
+
+        datePicker.addOnDismissListener{
+            canShowDatePicker = true
+        }
+        datePicker.addOnCancelListener{
+            canShowDatePicker = true
         }
 
         // initialize barChart
@@ -166,7 +181,10 @@ class DetailedWeightGraphFragment : Fragment() {
 
         val generateReportButton = view.findViewById<ImageButton>(R.id.generateReportButton)
         generateReportButton.setOnClickListener{
-            saveFile()
+            if (canShowGenerateReportDialog){
+                canShowGenerateReportDialog = false
+                saveFile()
+            }
         }
 
         return view
@@ -446,6 +464,7 @@ class DetailedWeightGraphFragment : Fragment() {
     }
 
     private fun saveFile(){
+        canShowGenerateReportDialog = true
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
             != PackageManager.PERMISSION_GRANTED && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
         ) {

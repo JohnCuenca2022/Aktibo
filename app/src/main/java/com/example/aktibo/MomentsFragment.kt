@@ -342,6 +342,7 @@ class MomentsFragment : Fragment() {
     private fun showPopupMenu(view: View, momentView: View, momentID: String) {
         val popupMenu = PopupMenu(requireContext(), view)
         popupMenu.inflate(R.menu.popup_menu) // Create a menu resource file (e.g., res/menu/popup_menu.xml)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  0
 
         popupMenu.setOnMenuItemClickListener { item: MenuItem ->
             when (item.itemId) {
@@ -352,7 +353,6 @@ class MomentsFragment : Fragment() {
                 else -> false
             }
         }
-
         popupMenu.show()
     }
 

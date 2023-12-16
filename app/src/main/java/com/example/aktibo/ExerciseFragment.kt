@@ -1,21 +1,15 @@
 package com.example.aktibo
 
-import android.app.usage.UsageEvents
-import java.util.Calendar
 import android.os.Bundle
-import android.text.Html
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
-import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import com.applandeo.materialcalendarview.CalendarView
-import androidx.recyclerview.widget.RecyclerView
 import com.applandeo.materialcalendarview.CalendarDay
-import java.time.LocalDate
-import java.time.YearMonth
-import java.time.format.DateTimeFormatter
+import com.applandeo.materialcalendarview.CalendarView
+import java.util.Calendar
 
 private lateinit var calendarView: CalendarView
 
@@ -36,17 +30,42 @@ class ExerciseFragment : Fragment() {
 
         val list = listOf(
             CalendarDay(currentDate).apply {
-                labelColor = R.color.primary
+                labelColor = R.color.off_white
                 backgroundResource = R.drawable.exercise_star
             },
             CalendarDay(currentDate2).apply {
-                labelColor = R.color.primary
+                labelColor = R.color.off_white
                 backgroundResource = R.drawable.exercise_star
             }
         )
 
         calendarView.setCalendarDayLayout(R.layout.custom_calendar_day_layout)
         calendarView.setCalendarDays(list)
+
+
+        val min = Calendar.getInstance()
+        min.set(Calendar.YEAR, 2023)
+        min.set(Calendar.MONTH, Calendar.JANUARY)
+        min.set(Calendar.DAY_OF_MONTH, 1)
+
+        val max = Calendar.getInstance()
+        max.set(
+            Calendar.DAY_OF_MONTH,
+            max.getActualMaximum(Calendar.DAY_OF_MONTH)
+        )
+
+        calendarView.setMinimumDate(min)
+        calendarView.setMaximumDate(max)
+
+        val previousButton = ContextCompat.getDrawable(requireContext(), R.drawable.left_chevron)
+        if (previousButton != null) {
+            calendarView.setPreviousButtonImage(previousButton)
+        }
+
+        val forwardButton = ContextCompat.getDrawable(requireContext(), R.drawable.right_chevron)
+        if (forwardButton != null) {
+            calendarView.setForwardButtonImage(forwardButton)
+        }
 
         return view
     }

@@ -18,6 +18,8 @@
     <string name="channel_description">Aktibo application</string>
     <string name="TFAtitle">Enable Two-Factor Auth</string>
     <string name="TFAsupporting_text">2FA will add an additional layer of security to your account by requiring an OTP code received through SMS when logging into your account\n\nIt is highly encouraged to enroll more than one phone number to avoid losing access to your account. </string>
+    <string name="homeInfoText">Based on studies by the Centers for Disease Control and Prevention, the average person is recommended to walk an estimated <b>15000</b> steps per week. Research by Brooks et. al, estimates this number of steps to burn around <b>541</b> kcal, which is a healthy portion of the average person\'s weekly calories to be burned. \n\nThe Dietary Guidelines for Americans estimates that the average person should burn an estimated 1,600 to 2,400 calories per day for females and 2,000 to 3,000 calories per
+day for males kcals in a week. \n\nThese weekly goals may vary for each individual but achieving them is a simple yet effective benchmark to track one\'s healthy lifestyle. </string>
     <string name="accept">Continue</string>
     <string name="decline">Cancel</string>
     <string name="cancel">Cancel</string>

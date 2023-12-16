@@ -71,6 +71,7 @@ class AccountFragment : Fragment() {
     var otpDialog = true
     private lateinit var multiFactorResolver: MultiFactorResolver
 
+    var canShow2FADialog = true
 
     override fun onStart() {
         super.onStart()
@@ -126,18 +127,26 @@ class AccountFragment : Fragment() {
         // Two-Factor Authentication
         val twoFAButton = view.findViewById<Button>(R.id.button_twoFA)
         twoFAButton.setOnClickListener{
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle(resources.getString(R.string.TFAtitle))
-                .setMessage(resources.getString(R.string.TFAsupporting_text))
-                .setNeutralButton(resources.getString(R.string.cancel)) { dialog, which ->
-                    // Respond to neutral button press
-                }
-                .setPositiveButton(resources.getString(R.string.accept)) { dialog, which ->
-                    // Respond to positive button press
-                    signIn()
-                }
-                .show()
-
+            if (canShow2FADialog){
+                canShow2FADialog = false
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(resources.getString(R.string.TFAtitle))
+                    .setMessage(resources.getString(R.string.TFAsupporting_text))
+                    .setNeutralButton(resources.getString(R.string.cancel)) { dialog, which ->
+                        // Respond to neutral button press
+                        canShow2FADialog = true
+                    }
+                    .setPositiveButton(resources.getString(R.string.accept)) { dialog, which ->
+                        // Respond to positive button press
+                        signIn()
+                        canShow2FADialog = true
+                    }.setOnCancelListener{
+                        canShow2FADialog = true
+                    }.setOnDismissListener{
+                        canShow2FADialog = true
+                    }
+                    .show()
+            }
         }
 
         // Settings

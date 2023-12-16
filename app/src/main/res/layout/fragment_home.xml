@@ -52,6 +52,17 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
 
+                <ImageButton
+                    android:id="@+id/infoImageButton"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:src="@drawable/info_icon"
+                    android:background="@color/transparent"
+                    android:layout_marginStart="10dp"
+
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"/>
+
                 <TextView
                     android:id="@+id/textViewWeek"
                     android:layout_width="wrap_content"
@@ -222,7 +233,7 @@
 
                         <ImageButton
                             android:id="@+id/stepsMore"
-                            android:layout_width="20dp"
+                            android:layout_width="26dp"
                             android:layout_height="26dp"
                             android:background="@color/transparent"
                             android:src="@drawable/right_chevron"
@@ -292,7 +303,7 @@
 
                         <ImageButton
                             android:id="@+id/weightMore"
-                            android:layout_width="20dp"
+                            android:layout_width="26dp"
                             android:layout_height="26dp"
                             android:background="@color/transparent"
                             android:src="@drawable/right_chevron"
