@@ -64,7 +64,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     app:cardBackgroundColor="@color/secondary"
-                    android:backgroundTint="@color/transparent"
+                    android:backgroundTint="@color/secondary"
                     app:cardCornerRadius="20dp"
                     android:foreground="@drawable/solid_border"
                     app:layout_constraintLeft_toLeftOf="parent"
@@ -89,7 +89,7 @@
                         app:abbreviationsBarColor="@color/secondary"
                         app:disabledDaysLabelsColor="@color/primary"
                         app:anotherMonthsDaysLabelsColor="@color/fainted_primary"
-                        app:todayLabelColor="@color/primary"
+                        app:todayLabelColor="@color/yellow"
                         app:layout_constraintLeft_toLeftOf="parent"
                         app:layout_constraintRight_toRightOf="parent"
                         app:layout_constraintTop_toBottomOf="@id/calendarTitle" />

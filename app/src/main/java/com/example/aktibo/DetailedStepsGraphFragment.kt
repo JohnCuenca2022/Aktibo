@@ -75,6 +75,9 @@ class DetailedStepsGraphFragment : Fragment() {
     private lateinit var datePickerButton: Button
     private lateinit var workbook: Workbook
 
+    var canShowDatePicker = true
+    var canShowGenerateReportDialog = true
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -127,7 +130,10 @@ class DetailedStepsGraphFragment : Fragment() {
 
         datePickerButton = view.findViewById(R.id.datePickerButton)
         datePickerButton.setOnClickListener{
-            datePicker.show(parentFragmentManager, datePicker.toString())
+            if (canShowDatePicker) {
+                canShowDatePicker = false
+                datePicker.show(parentFragmentManager, datePicker.toString())
+            }
         }
 
         datePicker.addOnPositiveButtonClickListener { selection ->
@@ -162,7 +168,14 @@ class DetailedStepsGraphFragment : Fragment() {
 
             getDailyStepCount(requireContext(), realStartDate.time, realEndDate.time)
 
-            //getDailyStepCount(requireContext(), startDateCalendar.time, endDateCalendar.time)
+            canShowDatePicker = true
+        }
+
+        datePicker.addOnDismissListener{
+            canShowDatePicker = true
+        }
+        datePicker.addOnCancelListener{
+            canShowDatePicker = true
         }
 
         // initialize barChart
@@ -182,7 +195,11 @@ class DetailedStepsGraphFragment : Fragment() {
 
         val generateReportButton = view.findViewById<ImageButton>(R.id.generateReportButton)
         generateReportButton.setOnClickListener{
-            saveFile()
+            if (canShowGenerateReportDialog){
+                canShowGenerateReportDialog = false
+                saveFile()
+            }
+
         }
 
         return view
@@ -485,6 +502,7 @@ class DetailedStepsGraphFragment : Fragment() {
     }
 
     private fun saveFile(){
+        canShowGenerateReportDialog = true
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE)
             != PackageManager.PERMISSION_GRANTED && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
         ) {

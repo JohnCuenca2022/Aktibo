@@ -2,14 +2,20 @@ package com.example.aktibo
 
 import android.content.ContentValues
 import android.content.Intent
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
+import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
+import androidx.core.content.res.ResourcesCompat
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
@@ -17,6 +23,14 @@ import com.google.firebase.ktx.Firebase
 import java.util.Calendar
 
 class NotificationsFragment : Fragment() {
+
+    private lateinit var notificationsArrayList: List<Map<String, Any>>
+
+    private lateinit var scrollContainer: LinearLayout
+    private lateinit var scrollView: ScrollView
+    private lateinit var progressBar: ProgressBar
+
+    var canLoadMoreNotifications = true
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -28,6 +42,19 @@ class NotificationsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        scrollView = view.findViewById(R.id.scrollView)
+        progressBar = view.findViewById(R.id.progressBar)
+
+        scrollView.viewTreeObserver.addOnScrollChangedListener {
+            if (isAtBottom(scrollView) && canLoadMoreNotifications) {
+                // Show loading ProgressBar
+                progressBar.visibility = View.VISIBLE
+                canLoadMoreNotifications = false
+
+                showNotifications(5)
+            }
+        }
 
         val user = Firebase.auth.currentUser
         if (user == null) {
@@ -44,7 +71,7 @@ class NotificationsFragment : Fragment() {
                 .addOnSuccessListener { document ->
                     if (document != null) {
 
-                        val scrollContainer: LinearLayout = view.findViewById(R.id.scrollContainer)
+                        scrollContainer = view.findViewById(R.id.scrollContainer)
 
                         val mapArray = document.get("notifications") as? List<Map<String, Any>>
                         if (mapArray != null) {
@@ -53,26 +80,9 @@ class NotificationsFragment : Fragment() {
                                 textViewMessage.visibility = View.VISIBLE
                             } else {
                                 val mapArrayReversed = mapArray.reversed()
-                                for (map in mapArrayReversed) {
-                                    val presetView: View =
-                                        LayoutInflater.from(requireActivity())
-                                            .inflate(R.layout.notification_item, null)
-                                    val params =
-                                        LinearLayout.LayoutParams(
-                                            LinearLayout.LayoutParams.MATCH_PARENT,
-                                            LinearLayout.LayoutParams.WRAP_CONTENT
-                                        )
-                                    params.setMargins(0, 0, 0, 20);
-                                    presetView.layoutParams = params
-                                    val presetTitle =
-                                        presetView.findViewById<TextView>(R.id.notificationHeader)
-                                    val timeDiff = getTimeAgoFromTimestamp(map["time"] as Timestamp)
-                                    presetTitle.text = timeDiff
-                                    val message =
-                                        presetView.findViewById<TextView>(R.id.notificationBody)
-                                    message.text = map["message"].toString()
-                                    scrollContainer.addView(presetView)
-                                }
+                                notificationsArrayList = mapArrayReversed
+
+                                showNotifications(10)
                             }
 
                         }
@@ -87,6 +97,65 @@ class NotificationsFragment : Fragment() {
 
 
         }
+    }
+
+    private fun isAtBottom(scrollView: ScrollView): Boolean {
+        val scrollY = scrollView.scrollY
+        val height = scrollView.height
+        val scrollViewChild = scrollView.getChildAt(0)
+        return scrollY + height >= scrollViewChild.height
+    }
+
+    private fun showNotifications(limit: Int) {
+        if (!::notificationsArrayList.isInitialized){
+            progressBar.visibility = View.GONE
+            return
+        }
+
+        if (notificationsArrayList.isEmpty()){
+            Toast.makeText(requireContext(), "There are no more notifications", Toast.LENGTH_SHORT).show()
+            progressBar.visibility = View.GONE
+            return
+        }
+
+        for ((index, map) in notificationsArrayList.withIndex()) {
+            if (index == notificationsArrayList.size-1){
+                notificationsArrayList = notificationsArrayList.subList(notificationsArrayList.size, notificationsArrayList.size)
+                canLoadMoreNotifications = true
+            } else if (index >= limit){
+                notificationsArrayList = notificationsArrayList.subList(index, notificationsArrayList.size)
+                canLoadMoreNotifications = true
+                return
+            }
+
+            val presetView: View =
+                LayoutInflater.from(requireActivity())
+                    .inflate(R.layout.notification_item, null)
+            val params =
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            params.setMargins(0, 0, 0, 20);
+            presetView.layoutParams = params
+            val presetTitle =
+                presetView.findViewById<TextView>(R.id.notificationHeader)
+            val timeDiff = getTimeAgoFromTimestamp(map["time"] as Timestamp)
+            presetTitle.text = timeDiff
+            val message =
+                presetView.findViewById<TextView>(R.id.notificationBody)
+            message.text = map["message"].toString()
+
+            val notifImageView = presetView.findViewById<ImageView>(R.id.notifImageView)
+            if (map["message"].toString().contains("Remember to record")){
+                notifImageView.setImageResource(R.drawable.food_notif_icon)
+            } else {
+                notifImageView.setImageResource(R.drawable.star_notif_icon)
+            }
+
+            scrollContainer.addView(presetView)
+        }
+        canLoadMoreNotifications = true
     }
 
     fun getTimeAgoFromTimestamp(timestamp: Timestamp): String {

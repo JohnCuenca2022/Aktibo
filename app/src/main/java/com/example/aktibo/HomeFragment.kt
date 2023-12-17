@@ -51,6 +51,7 @@ import com.google.android.gms.fitness.FitnessOptions
 import com.google.android.gms.fitness.data.DataType
 import com.google.android.gms.fitness.data.Field
 import com.google.android.gms.fitness.request.DataReadRequest
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -87,11 +88,23 @@ class HomeFragment : Fragment() {
     private lateinit var targetView: View
     private lateinit var textView: TextView
 
+    private lateinit var textViewWeek: TextView
+
+    private lateinit var infoImageButton: ImageButton
+
+    var canShowInfoDialog = true
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_home, container, false)
+
+        infoImageButton = view.findViewById(R.id.infoImageButton)
+        infoImageButton.setOnClickListener{
+            canShowInfoDialog = false
+            showInfoDialog()
+        }
 
         // load press animations
         val fadeIn = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_in)
@@ -108,6 +121,8 @@ class HomeFragment : Fragment() {
             // Apply fadeIn animation when released
             imageButtonAccount.startAnimation(fadeIn)
         }
+
+        textViewWeek = view.findViewById(R.id.textViewWeek)
 
         // initialize barChart
         barChart = view.findViewById(R.id.barChart)
@@ -197,6 +212,18 @@ class HomeFragment : Fragment() {
         sendMotivationalNotif()
 
         return view
+    }
+
+    private fun showInfoDialog() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Reach your weekly goals!")
+            .setMessage(resources.getString(R.string.homeInfoText))
+            .setOnCancelListener{
+                canShowInfoDialog = true
+            }.setOnDismissListener{
+                canShowInfoDialog = true
+            }
+            .show()
     }
 
     private fun replaceFragmentWithAnim(fragment: Fragment) {
@@ -295,8 +322,6 @@ class HomeFragment : Fragment() {
         start.set(Calendar.DAY_OF_WEEK, start.firstDayOfWeek)
         val startDate = Date(start.timeInMillis)
 
-        println("START $startDate")
-
         start.add(Calendar.DAY_OF_WEEK, 6)
         start.set(Calendar.HOUR_OF_DAY, 23)
         start.set(Calendar.MINUTE, 59)
@@ -304,17 +329,13 @@ class HomeFragment : Fragment() {
         start.set(Calendar.MILLISECOND, 999)
         val endDate = Date(start.timeInMillis)
 
-        println("START $endDate")
 
         val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
         val startDateFormatted = sdf.format(startDate)
         val endDateFormatted = sdf.format(endDate)
 
-        val textViewWeek = view?.findViewById<TextView>(R.id.textViewWeek)
-        if (textViewWeek != null) {
-            val text = "$startDateFormatted - $endDateFormatted"
-            textViewWeek.text = text
-        }
+        val text = "$startDateFormatted - $endDateFormatted"
+        textViewWeek.text = text
 
         val googleSignInAccount =
             GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
@@ -425,7 +446,6 @@ class HomeFragment : Fragment() {
                             AnimationUtil.animateTextViewNumerical(textViewCaloriesCount, 0, totalCaloriesInt, 1000)
                         }
 
-                        Log.d(TAG, "DocumentSnapshot data: ${document.data}")
                     } else {
                         Log.d(TAG, "No such document")
                     }
@@ -458,10 +478,6 @@ class HomeFragment : Fragment() {
                             val date = dataPoint.getStartTime(TimeUnit.MILLISECONDS)
                             val stepCount = dataPoint.getValue(Field.FIELD_STEPS).asInt()
                             val realDate = Date(date)
-
-                            println("*********************************")
-                            println(stepCount)
-                            println(realDate.toString())
 
                             var hasRecord = false
                             for (stepsRecord in stepCountsMap){
@@ -960,8 +976,6 @@ class HomeFragment : Fragment() {
         }
 
         val calendar2 = java.util.Calendar.getInstance()
-        System.out.println("Current Date and Time: " + calendar2.getTime());
-        System.out.println("Notif Date and Time: " + calendar.getTime());
 
         return calendar.timeInMillis
     }

@@ -2,17 +2,24 @@ package com.example.aktibo
 
 import android.os.Bundle
 import android.view.Gravity
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
+import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AnimationUtils
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.content.res.ResourcesCompat
+import androidx.fragment.app.Fragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FieldValue
@@ -27,6 +34,8 @@ class RoutineFragment : Fragment() {
 
     private lateinit var exercisesContainer: LinearLayout
     private lateinit var deleteRoutineImageButton: ImageButton
+
+    private lateinit var parentLayout: ConstraintLayout
 
     var db = Firebase.firestore
 
@@ -43,12 +52,33 @@ class RoutineFragment : Fragment() {
             routineList = bundle.getSerializable("routineList") as ArrayList<Map<String, ArrayList<String>>>
         }
 
+        parentLayout = view.findViewById(R.id.parentLayout)
+
+
         val textViewRoutineName = view.findViewById<TextView>(R.id.textViewRoutineName)
+        val routineNameEditText = view.findViewById<EditText>(R.id.routineNameEditText)
+
         textViewRoutineName.text = name
+        textViewRoutineName.setOnClickListener {
+            textViewRoutineName.visibility = View.GONE
+            routineNameEditText.visibility = View.VISIBLE
+            routineNameEditText.requestFocus()
+        }
+
+        routineNameEditText.setOnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) {
+                // EditText has gained focus
+                // Add your code here for the onFocus event
+            } else {
+                textViewRoutineName.visibility = View.VISIBLE
+                routineNameEditText.visibility = View.GONE
+            }
+        }
+
 
         deleteRoutineImageButton = view.findViewById(R.id.deleteRoutineImageButton)
         deleteRoutineImageButton.setOnClickListener{
-            showDeleteRoutineDialog()
+            showPopupMenu(deleteRoutineImageButton)
         }
 
         exercisesContainer = view.findViewById(R.id.exercisesContainer)
@@ -58,8 +88,26 @@ class RoutineFragment : Fragment() {
         return view
     }
 
+    private fun showPopupMenu(view: ImageButton) {
+        val popupMenu = PopupMenu(requireContext(), view)
+        popupMenu.inflate(R.menu.routine_menu) // Create a menu resource file (e.g., res/menu/popup_menu.xml)
+        0
+
+        popupMenu.setOnMenuItemClickListener { item: MenuItem ->
+            when (item.itemId) {
+                R.id.menu_option1 -> {
+                    showDeleteRoutineDialog()
+                    true
+                }
+                else -> false
+            }
+        }
+        popupMenu.show()
+    }
+
     private fun showExercises(){
         if (routineList.isEmpty()){
+            exercisesContainer.removeAllViews()
             addTextViewToLinearLayout(exercisesContainer, "There are no exercises")
         } else {
             exercisesContainer.removeAllViews()
@@ -176,7 +224,7 @@ class RoutineFragment : Fragment() {
             LinearLayout.LayoutParams.WRAP_CONTENT
         )
         textView.text = text
-        textView.textSize = 14f
+        textView.textSize = 16f
         textView.setTextColor(ContextCompat.getColor(linearLayout.context, android.R.color.white))
 
         val typeface = ResourcesCompat.getFont(linearLayout.context, R.font.roboto_bold)

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout
+    android:id="@+id/parentLayout"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -16,13 +17,25 @@
         app:layout_constraintTop_toTopOf="parent">
 
         <ImageButton
-            android:id="@+id/deleteRoutineImageButton"
-            android:layout_width="34dp"
-            android:layout_height="34dp"
+            android:id="@+id/editRoutineImageButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="@color/transparent"
-            android:src="@drawable/trash_icon"
-            android:layout_marginTop="10dp"
-            android:layout_marginEnd="10dp"
+            android:src="@drawable/pen_icon"
+            android:layout_marginTop="8dp"
+            android:scaleX="0.8"
+            android:scaleY="0.8"
+            app:layout_constraintEnd_toStartOf="@+id/deleteRoutineImageButton"
+            app:layout_constraintTop_toTopOf="parent"/>
+
+        <ImageButton
+            android:id="@+id/deleteRoutineImageButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@color/transparent"
+            android:src="@drawable/vertical_ellipsis"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="8dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"/>
 
@@ -30,7 +43,7 @@
             android:id="@+id/textViewRoutineName"
             android:layout_width="wrap_content"
             android:layout_height="40dp"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="40dp"
             android:fontFamily="@font/roboto_bold"
             android:gravity="center"
             android:text="My Routine"
@@ -40,15 +53,20 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <ImageButton
-            android:id="@+id/editRoutineNameImageButton"
-            android:layout_width="34dp"
-            android:layout_height="34dp"
-            android:background="@color/transparent"
-            android:src="@drawable/trash_icon"
-            app:layout_constraintStart_toEndOf="@+id/textViewRoutineName"
-            app:layout_constraintTop_toTopOf="@+id/textViewRoutineName"
-            app:layout_constraintBottom_toBottomOf="@+id/textViewRoutineName"/>
+        <EditText
+            android:id="@+id/routineNameEditText"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginTop="20dp"
+            android:fontFamily="@font/roboto_bold"
+            android:visibility="gone"
+            android:gravity="center"
+            android:text="My Routine"
+            android:textColor="@color/primary"
+            android:textSize="20sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
