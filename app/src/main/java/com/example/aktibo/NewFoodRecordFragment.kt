@@ -10,12 +10,16 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -28,6 +32,8 @@ import java.io.InputStream
 
 class NewFoodRecordFragment : Fragment() {
 
+    private lateinit var linearlayout: LinearLayout
+    private lateinit var progressBar: ProgressBar
     private lateinit var button_cancel: Button
     private lateinit var foodDescription: String
 
@@ -40,6 +46,9 @@ class NewFoodRecordFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_new_food_record, container, false)
+
+        linearlayout = view.findViewById(R.id.foodContainerLayout)
+        progressBar = view.findViewById(R.id.progressBar4)
 
         button_cancel = view.findViewById(R.id.button_cancel)
         button_cancel.setOnClickListener{
@@ -64,25 +73,73 @@ class NewFoodRecordFragment : Fragment() {
                     getFoodNutrients(foodDescription, appId, appKey)
                 }.await()
 
-                val foodItems = foodNutrients[0]
+                for (parsed in foodNutrients){
+                    withContext(Dispatchers.Main) {
+                        progressBar.visibility = View.GONE
 
-                println(foodItems.toString())
+                        val foodItem = parsed.food
+                        val quantity = parsed.quantity ?: 0
 
-//                val foodItems = foodNutrients[0] // food
-//                for (food in foodItems) {
-//                    var label = parsedItem.food.label
-//                    val ENERC_KCAL = parsedItem.food.nutrients.ENERC_KCAL
-//                    val CHOCDF = parsedItem.food.nutrients.CHOCDF
-//                    val PROCNT = parsedItem.food.nutrients.PROCNT
-//                    val FAT = parsedItem.food.nutrients.FAT
-//
-//                    Log.e("Edamam API", label)
-//                    Log.e("Edamam API ENERC_KCAL", ENERC_KCAL.toString())
-//                    Log.e("Edamam API CHOCDF", CHOCDF.toString())
-//                    Log.e("Edamam API PROCNT", PROCNT.toString())
-//                    Log.e("Edamam API FAT", FAT.toString())
-//
-//                }
+                        var label = foodItem.label
+                        val ENERC_KCAL = foodItem.nutrients.ENERC_KCAL ?: 0
+                        val CHOCDF = foodItem.nutrients.CHOCDF ?: 0
+                        val PROCNT = foodItem.nutrients.PROCNT ?: 0
+                        val FAT = foodItem.nutrients.FAT ?: 0
+
+                        // create view item
+                        val inflater = LayoutInflater.from(requireContext())
+                        val itemLayout = inflater.inflate(R.layout.food_record_item, null)
+
+                        val marginLayoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            resources.getDimensionPixelSize(R.dimen.exer_item_height)
+                        )
+                        marginLayoutParams.setMargins(
+                            0,
+                            0,
+                            0,
+                            resources.getDimensionPixelSize(R.dimen.bottom_margin)
+                        ) // Adjust the margin as needed
+                        itemLayout.layoutParams = marginLayoutParams
+
+                        // show values
+
+                        val foodName = itemLayout.findViewById<TextView>(R.id.foodName)
+                        var foodNameString = ""
+                        if(quantity.toDouble() > 0.0){
+                            foodNameString = "${label} (${formatFloat(quantity.toDouble())})"
+                        } else {
+                            foodNameString = label
+                        }
+                        foodName.text = foodNameString
+
+                        val calories = itemLayout.findViewById<TextView>(R.id.calories)
+                        val valoriesString = formatFloat(ENERC_KCAL.toDouble()) // round off
+                        calories.text = valoriesString
+
+                        val carbs = itemLayout.findViewById<TextView>(R.id.carbs)
+                        val carbsString = formatFloat(CHOCDF.toDouble()) + "g"
+                        carbs.text = carbsString
+
+                        val protein = itemLayout.findViewById<TextView>(R.id.protein)
+                        val proteinString = formatFloat(PROCNT.toDouble()) + "g"
+                        protein.text = proteinString
+
+                        val fat = itemLayout.findViewById<TextView>(R.id.fat)
+                        val fatString = formatFloat(FAT.toDouble()) + "g"
+                        fat.text = fatString
+
+                        // add to layout
+                        linearlayout.addView(itemLayout)
+
+                        Log.e("Edamam API", label)
+                        Log.e("Edamam API", quantity.toString())
+                        Log.e("Edamam API ENERC_KCAL", formatFloat(ENERC_KCAL.toDouble()))
+                        Log.e("Edamam API CHOCDF", CHOCDF.toString())
+                        Log.e("Edamam API PROCNT", PROCNT.toString())
+                        Log.e("Edamam API FAT", FAT.toString())
+                    }
+                }
             }
 
         }
@@ -106,15 +163,24 @@ class NewFoodRecordFragment : Fragment() {
                     if (edamamResponse != null) {
                         if (edamamResponse.parsed.isEmpty()){
                             Log.e("Edamam API", "No record found")
+                            Toast.makeText(context, "No record found", Toast.LENGTH_SHORT).show()
+                            val fragmentManager = parentFragmentManager
+                            fragmentManager.popBackStack()
                         } else {
                             foodNutrients.complete(edamamResponse.parsed)
                         }
 
                     } else {
                         Log.e("Edamam API", "Empty response body")
+                        Toast.makeText(context, "No record found", Toast.LENGTH_SHORT).show()
+                        val fragmentManager = parentFragmentManager
+                        fragmentManager.popBackStack()
                     }
                 } else {
                     Log.e("Edamam API", "failed reponse")
+                    Toast.makeText(context, "Faled to connect to food database", Toast.LENGTH_SHORT).show()
+                    val fragmentManager = parentFragmentManager
+                    fragmentManager.popBackStack()
                 }
             }
 
@@ -123,6 +189,19 @@ class NewFoodRecordFragment : Fragment() {
             }
         })
         return foodNutrients.await()
+    }
+
+    private fun formatFloat(number: Double?): String {
+        val roundedNumber = String.format("%.2f", number).toDouble()
+        return if (roundedNumber % 1.0 == 0.0) {
+            roundedNumber.toInt().toString()
+        } else {
+            roundedNumber.toString()
+        }
+    }
+
+    private fun saveFoodRecord(foodLabel: String, quantity: Double, calories: Double, protein: Double, fat: Double){
+
     }
 
 }

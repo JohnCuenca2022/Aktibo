@@ -47,6 +47,7 @@
         app:layout_constraintBottom_toTopOf="@id/button_cancel">
 
         <LinearLayout
+            android:id="@+id/foodContainerLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">

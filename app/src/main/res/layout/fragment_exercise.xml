@@ -54,7 +54,7 @@
                     android:gravity="start|center_vertical"
                     android:text="Your Exercise Record"
                     android:textColor="@color/primary"
-                    android:textSize="16sp"
+                    android:textSize="18sp"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"/>
 
@@ -71,28 +71,46 @@
                     app:layout_constraintRight_toRightOf="parent"
                     app:layout_constraintTop_toBottomOf="@id/calendarTitle">
 
-                    <com.applandeo.materialcalendarview.CalendarView
-                        android:id="@+id/calendarView"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:layout_marginEnd="12dp"
-                        android:layout_marginTop="12dp"
-                        android:layout_marginBottom="20dp"
-                        app:firstDayOfWeek="monday"
-                        app:swipeEnabled="false"
-                        app:headerColor="@color/secondary"
-                        app:headerLabelColor="@color/primary"
-                        app:pagesColor="@color/secondary"
-                        app:daysLabelsColor="@color/primary"
-                        app:abbreviationsLabelsColor="@color/primary"
-                        app:abbreviationsBarColor="@color/secondary"
-                        app:disabledDaysLabelsColor="@color/primary"
-                        app:anotherMonthsDaysLabelsColor="@color/fainted_primary"
-                        app:todayLabelColor="@color/yellow"
-                        app:layout_constraintLeft_toLeftOf="parent"
-                        app:layout_constraintRight_toRightOf="parent"
-                        app:layout_constraintTop_toBottomOf="@id/calendarTitle" />
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:padding="20dp">
+
+                        <TextView
+                            android:id="@+id/monthTextView"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/roboto_black"
+                            android:gravity="center"
+                            android:text="December 2023"
+                            android:textColor="@color/primary"
+                            android:textSize="16sp"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintTop_toTopOf="parent"/>
+
+                        <include
+                            android:id="@+id/titlesContainer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            layout="@layout/calendar_day_titles_container"
+                            app:layout_constraintTop_toBottomOf="@+id/monthTextView"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"/>
+
+                        <com.kizitonwose.calendar.view.CalendarView
+                            android:id="@+id/calendarView"
+                            android:layout_marginTop="10dp"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            app:cv_daySize="square"
+                            app:cv_dayViewResource="@layout/calendar_day_layout"
+                            app:layout_constraintTop_toBottomOf="@+id/titlesContainer"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent" />
+
+                    </androidx.constraintlayout.widget.ConstraintLayout>
 
                 </androidx.cardview.widget.CardView>
 
@@ -101,10 +119,12 @@
                     android:layout_width="match_parent"
                     app:layout_constrainedWidth="true"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="20dp"
+                    android:layout_marginTop="10dp"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginEnd="10dp"
                     android:fontFamily="@font/roboto_medium"
                     android:gravity="start"
-                    android:text="@string/exercise_goal_message"
+                    android:text=""
                     android:textColor="@color/primary"
                     android:textSize="15sp"
                     app:layout_constraintEnd_toEndOf="parent"
@@ -113,23 +133,23 @@
 
                 <FrameLayout
                     android:id="@+id/mealRecipesButtonFrame"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
+                    android:layout_marginTop="20dp"
                     app:layout_constrainedWidth="true"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/exerciseGoalMessage">
 
                     <ImageButton
-                        android:id="@+id/mealRecipesButton"
-                        android:layout_width="match_parent"
+                        android:id="@+id/exerciseGoalButton"
+                        android:layout_width="wrap_content"
                         android:layout_height="80dp"
                         android:layout_gravity="center_horizontal"
                         android:background="@color/transparent"
                         android:contentDescription="meal recipes button"
                         android:scaleType="centerInside"
-                        android:src="@drawable/meal_recipes_button" />
+                        android:src="@drawable/exercise_goal_button" />
 
                     <TextView
                         android:id="@+id/textViewMealRecipesButton"
@@ -141,7 +161,7 @@
                         android:gravity="center"
                         android:text="Your Exercise Goal"
                         android:textColor="@color/primary"
-                        android:textSize="20sp" />
+                        android:textSize="18sp" />
                 </FrameLayout>
 
                 <TextView
@@ -149,6 +169,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="30dp"
+                    android:layout_marginStart="10dp"
                     android:fontFamily="@font/roboto_black"
                     android:gravity="start|center_vertical"
                     android:text="Exercise Routines"
@@ -159,7 +180,7 @@
 
                 <FrameLayout
                     android:id="@+id/lightExerciseButtonFrame"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     app:layout_constrainedWidth="true"
@@ -169,8 +190,8 @@
 
                     <ImageButton
                         android:id="@+id/lightExerciseButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="144dp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"
                         android:background="@color/transparent"
                         android:contentDescription="meal recipes button"
@@ -182,7 +203,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="top|start"
-                        android:layout_marginStart="60dp"
+                        android:layout_marginStart="58dp"
                         android:layout_marginTop="6dp"
                         android:fontFamily="@font/roboto_bold"
                         android:gravity="center"
@@ -192,7 +213,7 @@
 
                     <TextView
                         android:id="@+id/textViewDescLightExerciseButton"
-                        android:layout_width="175dp"
+                        android:layout_width="160dp"
                         android:layout_height="wrap_content"
                         android:layout_gravity="top|start"
                         android:layout_marginStart="12dp"
@@ -212,14 +233,14 @@
                         android:layout_marginTop="104dp"
                         android:fontFamily="@font/roboto_italic"
                         android:gravity="start"
-                        android:text="(Avg. time 5-10 mins.)"
+                        android:text="Stretches and light work"
                         android:textColor="@color/primary"
                         android:textSize="14sp" />
                 </FrameLayout>
 
                 <FrameLayout
                     android:id="@+id/moderateExerciseButtonFrame"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
                     app:layout_constrainedWidth="true"
@@ -229,8 +250,8 @@
 
                     <ImageButton
                         android:id="@+id/moderateExerciseButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="144dp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"
                         android:background="@color/transparent"
                         android:contentDescription="meal recipes button"
@@ -242,7 +263,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="top|start"
-                        android:layout_marginStart="36dp"
+                        android:layout_marginStart="24dp"
                         android:layout_marginTop="6dp"
                         android:fontFamily="@font/roboto_bold"
                         android:gravity="center"
@@ -252,7 +273,7 @@
 
                     <TextView
                         android:id="@+id/textViewDescModerateExerciseButton"
-                        android:layout_width="175dp"
+                        android:layout_width="160dp"
                         android:layout_height="wrap_content"
                         android:layout_gravity="top|start"
                         android:layout_marginStart="12dp"
@@ -272,14 +293,14 @@
                         android:layout_marginTop="104dp"
                         android:fontFamily="@font/roboto_italic"
                         android:gravity="start"
-                        android:text="(Avg. time 10-20 mins.)"
+                        android:text="Intermediate exercises"
                         android:textColor="@color/primary"
                         android:textSize="14sp" />
                 </FrameLayout>
 
                 <FrameLayout
                     android:id="@+id/vigorousExerciseButtonFrame"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
                     app:layout_constrainedWidth="true"
@@ -289,8 +310,8 @@
 
                     <ImageButton
                         android:id="@+id/vigorousExerciseButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="144dp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
                         android:layout_gravity="center_horizontal"
                         android:background="@color/transparent"
                         android:contentDescription="meal recipes button"
@@ -302,7 +323,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="top|start"
-                        android:layout_marginStart="36dp"
+                        android:layout_marginStart="32dp"
                         android:layout_marginTop="6dp"
                         android:fontFamily="@font/roboto_bold"
                         android:gravity="center"
@@ -312,7 +333,7 @@
 
                     <TextView
                         android:id="@+id/textViewDescVigorousExerciseButton"
-                        android:layout_width="175dp"
+                        android:layout_width="160dp"
                         android:layout_height="wrap_content"
                         android:layout_gravity="top|start"
                         android:layout_marginStart="12dp"
@@ -332,7 +353,7 @@
                         android:layout_marginTop="104dp"
                         android:fontFamily="@font/roboto_italic"
                         android:gravity="start"
-                        android:text="(Avg. time 20+ mins.)"
+                        android:text="Quick intense workouts"
                         android:textColor="@color/primary"
                         android:textSize="14sp" />
                 </FrameLayout>

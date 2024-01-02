@@ -4,20 +4,18 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MenuItem
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AnimationUtils
-import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.PopupMenu
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
-import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -25,17 +23,27 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import kotlin.properties.Delegates
 
 
 class RoutineFragment : Fragment() {
 
     private lateinit var name: String
+    private var index: Int = 0
     private lateinit var routineList: ArrayList<Map<String, ArrayList<String>>>
+
+    private lateinit var textViewRoutineName: TextView
 
     private lateinit var exercisesContainer: LinearLayout
     private lateinit var deleteRoutineImageButton: ImageButton
+    private lateinit var editRoutineImageButton: ImageButton
+    private lateinit var saveRoutineImageButton: ImageButton
 
     private lateinit var parentLayout: ConstraintLayout
+
+    private lateinit var userID: String
+
+    var canShowDeleteRoutineDialog = true
 
     var db = Firebase.firestore
 
@@ -46,32 +54,87 @@ class RoutineFragment : Fragment() {
         // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_routine, container, false)
 
+        val user = Firebase.auth.currentUser
+        user?.let {
+            val uid = it.uid
+            userID = uid
+        }
+
         val bundle = arguments
         if (bundle != null) {
             name = bundle.getString("name").toString()
+            index = bundle.getInt("index")
             routineList = bundle.getSerializable("routineList") as ArrayList<Map<String, ArrayList<String>>>
         }
 
         parentLayout = view.findViewById(R.id.parentLayout)
 
 
-        val textViewRoutineName = view.findViewById<TextView>(R.id.textViewRoutineName)
+        textViewRoutineName = view.findViewById(R.id.textViewRoutineName)
         val routineNameEditText = view.findViewById<EditText>(R.id.routineNameEditText)
 
         textViewRoutineName.text = name
-        textViewRoutineName.setOnClickListener {
+
+//        textViewRoutineName.setOnClickListener {
+//            textViewRoutineName.visibility = View.GONE
+//            routineNameEditText.visibility = View.VISIBLE
+//            routineNameEditText.requestFocus()
+//        }
+
+        editRoutineImageButton = view.findViewById(R.id.editRoutineImageButton)
+        editRoutineImageButton.setOnClickListener{
+            editRoutineImageButton.visibility = View.GONE
+            saveRoutineImageButton.visibility = View.VISIBLE
+
             textViewRoutineName.visibility = View.GONE
+            routineNameEditText.setText(textViewRoutineName.text)
             routineNameEditText.visibility = View.VISIBLE
-            routineNameEditText.requestFocus()
+            // routineNameEditText.requestFocus()
+
+            for (i in 0 until exercisesContainer.childCount) {
+                val childView: View = exercisesContainer.getChildAt(i)
+
+                if (childView is TextView){
+                    continue
+                }
+                if (childView is ProgressBar){
+                    continue
+                }
+
+                val removeButton = childView.findViewById<ImageButton>(R.id.removeFromRoutineButton)
+                if (removeButton != null){
+                    removeButton.visibility = View.VISIBLE
+                }
+            }
         }
 
-        routineNameEditText.setOnFocusChangeListener { v, hasFocus ->
-            if (hasFocus) {
-                // EditText has gained focus
-                // Add your code here for the onFocus event
-            } else {
-                textViewRoutineName.visibility = View.VISIBLE
-                routineNameEditText.visibility = View.GONE
+        saveRoutineImageButton = view.findViewById(R.id.saveRoutineImageButton)
+        saveRoutineImageButton.setOnClickListener{
+            saveRoutineImageButton.visibility = View.GONE
+            editRoutineImageButton.visibility = View.VISIBLE
+
+            textViewRoutineName.text = routineNameEditText.text.toString().trim()
+
+            textViewRoutineName.visibility = View.VISIBLE
+            routineNameEditText.visibility = View.GONE
+
+            updateRoutineName(routineNameEditText.text.toString().trim())
+
+            for (i in 0 until exercisesContainer.childCount) {
+                val childView: View = exercisesContainer.getChildAt(i)
+
+                if (childView is TextView){
+                    continue
+                }
+                if (childView is ProgressBar){
+                    continue
+                }
+
+                val removeButton = childView.findViewById<ImageButton>(R.id.removeFromRoutineButton)
+                if (removeButton != null){
+                    removeButton.visibility = View.GONE
+                }
+
             }
         }
 
@@ -96,7 +159,10 @@ class RoutineFragment : Fragment() {
         popupMenu.setOnMenuItemClickListener { item: MenuItem ->
             when (item.itemId) {
                 R.id.menu_option1 -> {
-                    showDeleteRoutineDialog()
+                    if (canShowDeleteRoutineDialog){
+                        showDeleteRoutineDialog()
+                    }
+
                     true
                 }
                 else -> false
@@ -137,7 +203,7 @@ class RoutineFragment : Fragment() {
                             }
 
                             val inflater = LayoutInflater.from(requireContext())
-                            val itemLayout = inflater.inflate(R.layout.exercise_item, null)
+                            val itemLayout = inflater.inflate(R.layout.exercise_item_routine, null)
 
                             val marginLayoutParams = LinearLayout.LayoutParams(
                                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -159,16 +225,17 @@ class RoutineFragment : Fragment() {
                             val exerciseTags = itemLayout.findViewById<TextView>(R.id.exerciseTags)
                             exerciseTags.text = tagsString
 
-                            val addToRoutineButton = itemLayout.findViewById<ImageButton>(R.id.addToRoutineButton)
+                            val removeFromRoutineButton = itemLayout.findViewById<ImageButton>(R.id.removeFromRoutineButton)
                             val fadeIn = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_in)
                             val fadeOut = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_out)
 
-                            addToRoutineButton.setOnClickListener{
-                                addToRoutineButton.startAnimation(fadeOut)
+                            removeFromRoutineButton.setOnClickListener{
+                                removeFromRoutineButton.startAnimation(fadeOut)
 
-                                // showAddToRoutineDialog(name, id)
+                                removeFromRoutine(name, id)
+                                exercisesContainer.removeView(itemLayout)
 
-                                addToRoutineButton.startAnimation(fadeIn)
+                                removeFromRoutineButton.startAnimation(fadeIn)
                             }
 
                             val layout = itemLayout.findViewById<LinearLayout>(R.id.layout)
@@ -183,19 +250,104 @@ class RoutineFragment : Fragment() {
         }
     }
 
+    private fun updateRoutineName(newRoutineName: String){
+        if (newRoutineName.trim() == ""){
+            Toast.makeText(context, "Routine name cannot be empty", Toast.LENGTH_SHORT).show()
+            textViewRoutineName.text = name
+            return
+        }
+
+        val docRef = db.collection("users").document(userID)
+        docRef.get()
+            .addOnSuccessListener { document ->
+                if (document != null) {
+                    val routines = document.get("routines") as ArrayList<Map<String, Any>>
+
+                    val routine = routines[index] // selected routine
+                    val routineName = routine["name"] as? String ?: ""
+                    val routineList = routine["routineList"] as? ArrayList<Map<String, Any>>
+
+                    val updatedRoutine = mapOf(
+                        "name" to newRoutineName,
+                        "routineList" to routineList
+                    )
+
+                    // replace old routine data with updated data
+                    routines[index] = updatedRoutine as Map<String, Any>
+
+                    val userRef = db.collection("users").document(userID)
+                    userRef.update(
+                        "routines", routines
+                    ).addOnSuccessListener {
+                        // Toast.makeText(context, "Removed $name", Toast.LENGTH_SHORT).show()
+                    }.addOnFailureListener {
+                        Toast.makeText(context, "Failed to update name", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                }
+            }
+    }
+
+    private fun removeFromRoutine(name: String, id: String) {
+        val docRef = db.collection("users").document(userID)
+        docRef.get()
+            .addOnSuccessListener { document ->
+                if (document != null) {
+                    val routines = document.get("routines") as ArrayList<Map<String, Any>>
+
+                    val routine = routines[index] // selected routine
+                    val routineName = routine["name"] as? String ?: ""
+                    val routineList = routine["routineList"] as? ArrayList<Map<String, Any>>
+
+                    val exerciseData = mapOf(
+                        "exerciseName" to name,
+                        "exerciseID" to id
+                    )
+
+                    routineList?.remove(exerciseData)
+
+                    val updatedRoutine = mapOf(
+                        "name" to routineName,
+                        "routineList" to routineList
+                    )
+
+                    // replace old routine data with updated data
+                    routines[index] = updatedRoutine as Map<String, Any>
+
+                    val userRef = db.collection("users").document(userID)
+                    userRef.update(
+                        "routines", routines
+                    ).addOnSuccessListener {
+                        Toast.makeText(context, "Removed $name", Toast.LENGTH_SHORT).show()
+                    }.addOnFailureListener {
+                        Toast.makeText(context, "Failed to remove exercise", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+
+                }
+            }
+    }
 
     private fun showDeleteRoutineDialog(){
+        canShowDeleteRoutineDialog = false
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Are you sure you want to remove ${name}?")
             .setNegativeButton("Cancel") { dialog, which ->
+                canShowDeleteRoutineDialog = true
                 dialog.dismiss()
             }
             .setPositiveButton("Confirm") { dialog, which ->
+                canShowDeleteRoutineDialog = true
                 deleteRoutine()
                 dialog.dismiss()
+            }.setOnDismissListener{
+                canShowDeleteRoutineDialog = true
+            }.setOnCancelListener{
+                canShowDeleteRoutineDialog = true
             }
             .show()
     }
+
     private fun deleteRoutine(){
         val routineData = mapOf(
             "name" to name,

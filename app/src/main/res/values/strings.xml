@@ -12,7 +12,7 @@
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="your_account">Your Account</string>
     <string name="your_web_client_id">363113385770-5epr0f4kpi628noiduvo6mdvskued8fo.apps.googleusercontent.com</string>
-    <string name="exercise_goal_message">You have been consistent on your exercise goal of <font color='#63A91F'>1-2 exercises</font> per week</string>
+
     <string name="_1_start_on_your_hands_and_toes_with_your_hands_slightly_wider_than_shoulder_width_apart"><![CDATA[<string name=\"list\">\n  <li>1) Item 1</li>\\n\n  <li>2) Item 2</li>\\n\n  <li>3) Item 3</li>\\n\n</string>\n]]></string>
     <string name="channel_name">Aktibo</string>
     <string name="channel_description">Aktibo application</string>
@@ -23,5 +23,7 @@ day for males kcals in a week. \n\nThese weekly goals may vary for each individu
     <string name="accept">Continue</string>
     <string name="decline">Cancel</string>
     <string name="cancel">Cancel</string>
+    <string name="reportPopUpTitle">Reason:</string>
+    <string name="submit">Submit</string>
 
 </resources>

@@ -11,6 +11,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat.getSystemService
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.textfield.TextInputEditText
@@ -21,6 +22,17 @@ import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.squareup.picasso.Picasso
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 
 class ModalBottomSheet(val documentID: String, val momentCommentCount: TextView) : BottomSheetDialogFragment() {
@@ -29,6 +41,14 @@ class ModalBottomSheet(val documentID: String, val momentCommentCount: TextView)
     private lateinit var linearLayout: LinearLayout
     private lateinit var TextInputLayoutNewComment: TextInputLayout
     private lateinit var textInputEditTextComment: TextInputEditText
+    private lateinit var textWarningTextView: TextView
+    private lateinit var textWarningCardView: CardView
+
+    var canPostComment = true
+
+    // Sight Engine
+    val apiUser = "1227574749"
+    val apiSecret = "NLvWeA9iUfYBqg6rMyx6VsaJXy"
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -41,7 +61,8 @@ class ModalBottomSheet(val documentID: String, val momentCommentCount: TextView)
         linearLayout = view.findViewById(R.id.commentsLinearLayout)
         TextInputLayoutNewComment = view.findViewById(R.id.TextInputLayoutNewComment)
         textInputEditTextComment = view.findViewById(R.id.textInputEditTextComment)
-
+        textWarningTextView = view.findViewById(R.id.textWarningTextView)
+        textWarningCardView =  view.findViewById(R.id.textWarningCardView)
 
         val db = Firebase.firestore
         val docRef = db.collection("moments").document(documentID)
@@ -101,13 +122,51 @@ class ModalBottomSheet(val documentID: String, val momentCommentCount: TextView)
             }
 
         TextInputLayoutNewComment.setEndIconOnClickListener {
-            val newComment = textInputEditTextComment.text.toString()
+            if (canPostComment){
+                canPostComment = false
+                Toast.makeText(context, "Verifying Comment", Toast.LENGTH_SHORT).show()
 
-            if (newComment == ""){
-                Toast.makeText(context, "Write a comment", Toast.LENGTH_SHORT).show()
-            } else {
-                uploadComment(newComment, documentID) // database
+                textWarningCardView.visibility = View.GONE // hide profanity warning message
+                val newComment = textInputEditTextComment.text.toString()
+
+                if (newComment == ""){
+                    Toast.makeText(context, "Write a comment", Toast.LENGTH_SHORT).show()
+                    TextInputLayoutNewComment.endIconMode = TextInputLayout.END_ICON_CUSTOM
+                } else {
+                    CoroutineScope(Dispatchers.IO).launch{
+                        val isSafeEnglish = async {
+                            checkProfanity(newComment, "en", apiUser, apiSecret)
+                        }.await()
+
+                        if (!isSafeEnglish){
+                            withContext(Dispatchers.Main) {
+                                canPostComment = true
+                            }
+
+                            return@launch
+                        }
+
+                        val isSafeFilipino = async {
+                            checkProfanity(newComment, "tl", apiUser, apiSecret)
+                        }.await()
+
+                        if (!isSafeFilipino){
+                            withContext(Dispatchers.Main) {
+                                canPostComment = true
+                            }
+
+                            return@launch
+                        }
+
+                        withContext(Dispatchers.Main) {
+                            uploadComment(newComment, documentID) // database
+                        }
+
+                    }
+
+                }
             }
+
         }
 
         return view
@@ -192,13 +251,17 @@ class ModalBottomSheet(val documentID: String, val momentCommentCount: TextView)
                                 postComment(newComment, userImage, username) // UI
                             }
                         }
+
+                        canPostComment = true
                     } else {
                         Toast.makeText(context, "Error posting comment", Toast.LENGTH_SHORT).show()
+                        canPostComment = true
                     }
                 }
                 .addOnFailureListener { exception ->
                     Toast.makeText(context, "Error posting comment", Toast.LENGTH_SHORT).show()
                     Log.d(TAG, "get failed with ", exception)
+                    canPostComment = true
                 }
         }
     }
@@ -215,5 +278,65 @@ class ModalBottomSheet(val documentID: String, val momentCommentCount: TextView)
 
     companion object {
         const val TAG = "ModalBottomSheet"
+    }
+
+    private suspend fun checkProfanity(text: String, lang: String, apiKey: String, apiSecret: String): Boolean {
+        val isPassing = CompletableDeferred<Boolean>()
+
+        val retrofit = Retrofit.Builder()
+            .baseUrl("https://api.sightengine.com/1.0/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+        val service = retrofit.create(SightEngineServiceText::class.java)
+
+        val call = service.checkText(text, "standard", lang, "us,gb,fr,ph", apiKey, apiSecret)
+        call.enqueue(object : Callback<SightEngineResponseText> {
+            override fun onResponse(call: Call<SightEngineResponseText>, response: Response<SightEngineResponseText>) {
+                if (response.isSuccessful) {
+                    val sightEngineResponseText = response.body()
+                    if (sightEngineResponseText != null) {
+                        val status = sightEngineResponseText.status
+                        val profanityMatches = sightEngineResponseText.profanity.matches
+
+                        // Handle the profanity check results here
+                        Log.e("SightEngine API Text Status", status)
+                        Log.e("SightEngine API Text Profanity Matches", profanityMatches.toString())
+
+                        if (profanityMatches.isEmpty()){
+                            Log.e("SightEngine API Text Profanity", "no profanity")
+                            isPassing.complete(true)
+                        } else {
+                            // text has flagged words
+                            var warningMessage = "User Guidelines Violation.\nInappropriate words:"
+                            profanityMatches.forEach { item ->
+                                val reasonText = " ${item.match},"
+                                warningMessage += reasonText
+                                println(warningMessage)
+                            }
+                            warningMessage = warningMessage.removeSuffix(",")
+
+                             textWarningTextView.text = warningMessage
+                             textWarningCardView.visibility = View.VISIBLE
+
+                            isPassing.complete(false)
+                        }
+
+                    }
+                } else {
+                    Log.e("SightEngine API Text", "Empty response body")
+                    Toast.makeText(requireContext(), "Failed to scan text. Please try again.", Toast.LENGTH_SHORT).show()
+                    isPassing.complete(false)
+                }
+            }
+
+            override fun onFailure(call: Call<SightEngineResponseText>, t: Throwable) {
+                Log.e("SightEngine API Text", "Network error: ${t.message}")
+                Toast.makeText(requireContext(), "Network error. Please try again.", Toast.LENGTH_SHORT).show()
+                isPassing.complete(false)
+            }
+        })
+
+        return isPassing.await()
     }
 }

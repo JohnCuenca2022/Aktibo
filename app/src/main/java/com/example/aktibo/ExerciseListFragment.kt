@@ -37,6 +37,8 @@ class ExerciseListFragment : Fragment() {
 
     var db = Firebase.firestore
 
+    var canShowAddToRoutineDialog = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -148,7 +150,7 @@ class ExerciseListFragment : Fragment() {
                     exerciseInfo.text = ""
 
                     itemLayout.setOnClickListener{
-                        replaceFragmentToRoutine(RoutineFragment(), name, routineList)
+                        replaceFragmentToRoutine(RoutineFragment(), name, routineList, 0)
                     }
 
                     linearLayout?.addView(itemLayout)
@@ -159,7 +161,7 @@ class ExerciseListFragment : Fragment() {
 
             val linearLayout = view?.findViewById<LinearLayout>(R.id.yourRoutinesContainer)
             linearLayout?.removeAllViews()
-            for (routine in routines){
+            for ((indexRoutine, routine) in routines.withIndex()){
                 val name = routine["name"] as String
                 val routineList = routine["routineList"] as ArrayList<Map<String, ArrayList<String>>>
 
@@ -188,7 +190,7 @@ class ExerciseListFragment : Fragment() {
                 var index = 0
                 var wentOver = 0
                 for (ex in exer){
-                    if (index < 5){
+                    if (index < 4){
                         if (index == 0){
                             exerciseInfoString += "${ex}"
                         } else {
@@ -207,7 +209,7 @@ class ExerciseListFragment : Fragment() {
                 exerciseInfo.text = exerciseInfoString
 
                 itemLayout.setOnClickListener{
-                    replaceFragmentToRoutine(RoutineFragment(), name, routineList)
+                    replaceFragmentToRoutine(RoutineFragment(), name, routineList, indexRoutine)
                 }
 
                 linearLayout?.addView(itemLayout)
@@ -216,9 +218,10 @@ class ExerciseListFragment : Fragment() {
         }
     }
 
-    private fun replaceFragmentToRoutine(fragment: Fragment, name: String, routineList: ArrayList<Map<String, ArrayList<String>>>) {
+    private fun replaceFragmentToRoutine(fragment: Fragment, name: String, routineList: ArrayList<Map<String, ArrayList<String>>>, index: Int) {
         val bundle = Bundle()
         bundle.putString("name", name)
+        bundle.putInt("index", index)
         bundle.putSerializable("routineList", routineList)
         val newFragment = fragment
         newFragment.arguments = bundle
@@ -295,7 +298,10 @@ class ExerciseListFragment : Fragment() {
                     addToRoutineButton.setOnClickListener{
                         addToRoutineButton.startAnimation(fadeOut)
 
-                        showAddToRoutineDialog(name, id)
+                        if (canShowAddToRoutineDialog){
+                            showAddToRoutineDialog(name, id)
+                        }
+
 
                         addToRoutineButton.startAnimation(fadeIn)
                     }
@@ -311,6 +317,7 @@ class ExerciseListFragment : Fragment() {
     }
 
     fun showAddToRoutineDialog(exerciseName: String, exerciseID: String){
+        canShowAddToRoutineDialog = false
         val docRef = db.collection("users").document(userID)
         docRef.get()
             .addOnSuccessListener { document ->
@@ -360,7 +367,14 @@ class ExerciseListFragment : Fragment() {
                         .setPositiveButton("Confirm", null)
                         .setNegativeButton("Cancel") { dialog, which ->
                             // Handle negative button click
+                            canShowAddToRoutineDialog = true
                             dialog.dismiss()
+                        }
+                        .setOnCancelListener{
+                            canShowAddToRoutineDialog = true
+                        }
+                        .setOnDismissListener{
+                            canShowAddToRoutineDialog = true
                         }
 
                     val dialog = builder.create()
@@ -369,6 +383,7 @@ class ExerciseListFragment : Fragment() {
                     dialog.setOnShowListener {
                         val positiveButton = dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
                         positiveButton.setOnClickListener {
+                            canShowAddToRoutineDialog = true
                             val selected = routineSpinner.selectedItemId
 
                             if (selected.toInt() == routinesNames.size - 1){

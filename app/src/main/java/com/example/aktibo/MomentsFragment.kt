@@ -48,6 +48,9 @@ class MomentsFragment : Fragment() {
     private lateinit var progressBar: ProgressBar
     private lateinit var imageButton: ImageButton
 
+    private val PREFS_NAME = "MyPrefsFile"
+    private val PREF_KEY_SHOW_DIALOG = "showDialog"
+
     var canLoadMoreMoments = true
     var canShowEndOfMomentsMessage = true
 
@@ -113,6 +116,7 @@ class MomentsFragment : Fragment() {
                 addNewContent()
             }
         }
+
     }
 
     private fun replaceFragmentWithAnim(fragment: Fragment) {
@@ -450,5 +454,26 @@ class MomentsFragment : Fragment() {
                 }
         }
     }
+
+    // Terms of Service
+    private fun shouldShowDialog(): Boolean {
+        val prefs: SharedPreferences = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(PREF_KEY_SHOW_DIALOG, true)
+    }
+
+    private fun setShowDialogPreference(show: Boolean) {
+        val prefs: SharedPreferences = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val editor = prefs.edit()
+        editor.putBoolean(PREF_KEY_SHOW_DIALOG, show)
+        editor.apply()
+    }
+
+    private fun resetPreferences() {
+        val prefs: SharedPreferences = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val editor = prefs.edit()
+        editor.clear() // This will remove all preferences
+        editor.apply()
+    }
+
 
 }

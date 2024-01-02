@@ -11,6 +11,12 @@
         <item>Lose Weight</item>
     </string-array>
 
+    <string-array name="exercise_goal_array">
+        <item>1–2 Exercises</item>
+        <item>3–4 Exercises</item>
+        <item>5+ Exercises</item>
+    </string-array>
+
     <string-array name="height_array">
         <item>cm</item>
         <item>in</item>
@@ -19,5 +25,25 @@
     <string-array name="sex_array">
         <item>Male</item>
         <item>Female</item>
+    </string-array>
+    <string-array name="feet_spinner_options">
+        <item>4\'</item>
+        <item>5\'</item>
+        <item>6\'</item>
+        <item>7\'</item>
+        <item>8\'</item>
+    </string-array>
+    <string-array name="inches_spinner_options">
+        <item>1"</item>
+        <item>2"</item>
+        <item>3"</item>
+        <item>4"</item>
+        <item>5"</item>
+        <item>6"</item>
+        <item>7"</item>
+        <item>8"</item>
+        <item>9"</item>
+        <item>10"</item>
+        <item>11"</item>
     </string-array>
 </resources>

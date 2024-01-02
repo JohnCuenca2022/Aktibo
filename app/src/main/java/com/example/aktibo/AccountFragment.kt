@@ -84,16 +84,16 @@ class AccountFragment : Fragment() {
                 // Use the retrieved username and userImage
                 if (usernameTextView != null) {
                     usernameTextView.text = username
-                    userName = username
                 }
+                userName = username
 
                 if (userImage != "") {
                     Picasso.get()
                         .load(userImage)
                         .placeholder(R.drawable.placeholder_image) // Optional placeholder image
                         .into(imageView)
-                    imageURL = userImage
                 }
+                imageURL = userImage
 
             } else {
                 // Handle the case where the document doesn't exist or is missing fields
@@ -110,7 +110,6 @@ class AccountFragment : Fragment() {
         googleSignInClient = GoogleSignIn.getClient(requireActivity(), gso)
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -121,7 +120,11 @@ class AccountFragment : Fragment() {
         // Edit Profile
         val editProfile = view.findViewById<Button>(R.id.button_editProfile)
         editProfile.setOnClickListener{
-            replaceFragmentWithAnimAndData(imageURL, userName)
+            if (::imageURL.isInitialized && ::userName.isInitialized){
+                replaceFragmentWithAnimAndData(imageURL, userName)
+            } else {
+                replaceFragmentWithAnimAndData("", "")
+            }
         }
 
         // Two-Factor Authentication

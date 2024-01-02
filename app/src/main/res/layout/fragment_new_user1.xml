@@ -122,10 +122,32 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"
+                android:visibility="gone"
                 android:inputType="numberDecimal"
                 android:textSize="20sp"
                 android:fontFamily="@font/roboto_medium"
                 android:gravity="center"/>
+
+            <LinearLayout
+                android:id="@+id/heightImperialLayout"
+                android:layout_width="120dp"
+                android:layout_height="match_parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent">
+
+                <TextView
+                    android:id="@+id/heightImperialTextView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:textSize="20sp"
+                    android:fontFamily="@font/roboto_medium"
+                    android:gravity="center"
+                    android:textColor="@color/primary"
+                    android:text="4'0&quot;" />
+
+            </LinearLayout>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 

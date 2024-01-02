@@ -29,6 +29,17 @@
             app:layout_constraintTop_toTopOf="parent"/>
 
         <ImageButton
+            android:id="@+id/saveRoutineImageButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@color/transparent"
+            android:src="@drawable/check_icon"
+            android:visibility="gone"
+            android:layout_marginTop="8dp"
+            app:layout_constraintEnd_toStartOf="@+id/deleteRoutineImageButton"
+            app:layout_constraintTop_toTopOf="parent"/>
+
+        <ImageButton
             android:id="@+id/deleteRoutineImageButton"
             android:layout_width="40dp"
             android:layout_height="40dp"
@@ -55,13 +66,17 @@
 
         <EditText
             android:id="@+id/routineNameEditText"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:layout_marginTop="20dp"
+            android:layout_width="200dp"
+            android:layout_height="46dp"
+            android:layout_marginTop="40dp"
             android:fontFamily="@font/roboto_bold"
             android:visibility="gone"
             android:gravity="center"
             android:text="My Routine"
+            android:inputType="text"
+            android:singleLine="true"
+            android:maxLines="1"
+            android:maxLength="15"
             android:textColor="@color/primary"
             android:textSize="20sp"
             app:layout_constraintEnd_toEndOf="parent"

@@ -29,9 +29,10 @@
                 android:textColor="@color/off_white"
                 android:gravity="center"
                 android:padding="8dp"
+                android:textSize="22sp"
                 android:autoSizeTextType="uniform"
-                app:autoSizeMinTextSize="16sp"
-                app:autoSizeMaxTextSize="20sp"
+                app:autoSizeMinTextSize="11sp"
+                app:autoSizeMaxTextSize="26sp"
                 app:autoSizeStepGranularity="1sp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
@@ -85,11 +86,12 @@
 
 
         <ImageButton
-            android:id="@+id/addToRoutineButton"
+            android:id="@+id/removeFromRoutineButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginEnd="10dp"
-            android:src="@drawable/add_moment_button"
+            android:visibility="gone"
+            android:src="@drawable/circle_xmark"
             android:scaleType="centerCrop"
             android:background="@color/transparent"
             android:contentDescription="Image Button"

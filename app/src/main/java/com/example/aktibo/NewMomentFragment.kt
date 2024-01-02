@@ -771,8 +771,8 @@ class NewMomentFragment : Fragment() {
                                     "likes" to likes,
                                     "comments" to comments,
                                     "commentsList" to commentsList,
-                                    "datePosted" to FieldValue.serverTimestamp()
-
+                                    "datePosted" to FieldValue.serverTimestamp(),
+                                    "reportsCount" to 0
                                 )
 
                                 db.collection("moments")
