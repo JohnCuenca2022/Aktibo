@@ -23,18 +23,18 @@
             <TextView
                 android:id="@+id/exerciseName"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="60dp"
                 android:fontFamily="@font/roboto_black"
                 android:text="Push-Ups"
                 android:textColor="@color/off_white"
                 android:gravity="center"
                 android:padding="8dp"
-                android:textSize="22sp"
                 android:autoSizeTextType="uniform"
-                app:autoSizeMinTextSize="11sp"
-                app:autoSizeMaxTextSize="26sp"
+                app:autoSizeMinTextSize="8sp"
+                app:autoSizeMaxTextSize="12sp"
                 app:autoSizeStepGranularity="1sp"
                 app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent" />
 

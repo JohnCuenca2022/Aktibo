@@ -20,9 +20,18 @@ import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import kotlin.properties.Delegates
 
 
@@ -30,7 +39,7 @@ class RoutineFragment : Fragment() {
 
     private lateinit var name: String
     private var index: Int = 0
-    private lateinit var routineList: ArrayList<Map<String, ArrayList<String>>>
+    private lateinit var routineList: ArrayList<Map<String, Any>>
 
     private lateinit var textViewRoutineName: TextView
 
@@ -64,7 +73,7 @@ class RoutineFragment : Fragment() {
         if (bundle != null) {
             name = bundle.getString("name").toString()
             index = bundle.getInt("index")
-            routineList = bundle.getSerializable("routineList") as ArrayList<Map<String, ArrayList<String>>>
+            routineList = bundle.getSerializable("routineList") as ArrayList<Map<String, Any>>
         }
 
         parentLayout = view.findViewById(R.id.parentLayout)
@@ -73,13 +82,7 @@ class RoutineFragment : Fragment() {
         textViewRoutineName = view.findViewById(R.id.textViewRoutineName)
         val routineNameEditText = view.findViewById<EditText>(R.id.routineNameEditText)
 
-        textViewRoutineName.text = name
-
-//        textViewRoutineName.setOnClickListener {
-//            textViewRoutineName.visibility = View.GONE
-//            routineNameEditText.visibility = View.VISIBLE
-//            routineNameEditText.requestFocus()
-//        }
+        // textViewRoutineName.text = name
 
         editRoutineImageButton = view.findViewById(R.id.editRoutineImageButton)
         editRoutineImageButton.setOnClickListener{
@@ -172,81 +175,139 @@ class RoutineFragment : Fragment() {
     }
 
     private fun showExercises(){
-        if (routineList.isEmpty()){
-            exercisesContainer.removeAllViews()
-            addTextViewToLinearLayout(exercisesContainer, "There are no exercises")
-        } else {
-            exercisesContainer.removeAllViews()
-            for (routine in routineList) {
-                val exerciseID = routine["exerciseID"] as? String ?: ""
+        val docRef = db.collection("users").document(userID)
+        docRef.get()
+            .addOnSuccessListener { document ->
+                if (document != null) {
+                    val routines = document.get("routines") as ArrayList<Map<String, Any>>
 
-                val db = Firebase.firestore
-                val docRef = db.collection("exercises").document(exerciseID)
-                docRef.get()
-                    .addOnSuccessListener { document ->
-                        if (document != null) {
-                            val id = document.id
-                            val name = document.getString("name").toString()
-                            val reps_duration = document["reps_duration"].toString()
-                            val sets = document.getDouble("sets")?.toInt().toString()
-                            val est_time = document["est_time"].toString()
+                    val routine = routines[index] // selected routine
 
-                            val tags: ArrayList<String> = document.data?.get("tags") as ArrayList<String>
+                    val routineName = routine["name"] as? String ?: ""
+                    val routineList = routine["routineList"] as? ArrayList<Map<String, Any>> ?: ArrayList()
 
-                            var tagsString = ""
-                            for ((index, tag) in tags.withIndex()) {
-                                if (index == tags.size - 1) {
-                                    tagsString += "${tag}"
-                                } else {
-                                    tagsString += "${tag}, "
+                    textViewRoutineName.text = routineName
+                    name = routineName
+
+                    ::routineList.set(routineList)
+
+                    if (routineList.isEmpty()){
+                        exercisesContainer.removeAllViews()
+                        addTextViewToLinearLayout(exercisesContainer, "There are no exercises")
+                    } else {
+                        exercisesContainer.removeAllViews()
+                        val documentIds: MutableList<String> = mutableListOf()
+                        for ((index, routine) in routineList.withIndex()) {
+                            val exerciseID = routine["exerciseID"] as? String ?: ""
+
+                            documentIds.add(exerciseID)
+                        }
+
+                        documentIds.add("asdf")
+                        try {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val results = async {
+                                    getDocumentsInOrder(documentIds)
+                                }.await()
+                                for ((index, result) in results.withIndex()) {
+                                    println("Document ${documentIds[index]} data: $result")
+
+                                    val id = result.id
+                                    val name = result.getString("name").toString()
+                                    val reps_duration = result["reps_duration"].toString()
+                                    val sets = result.getDouble("sets")?.toInt().toString()
+                                    val est_time = result["est_time"].toString()
+
+                                    val tags: ArrayList<String> = result.get("tags") as ArrayList<String>
+
+                                    var tagsString = ""
+                                    for ((index, tag) in tags.withIndex()) {
+                                        if (index == tags.size - 1) {
+                                            tagsString += "${tag}"
+                                        } else {
+                                            tagsString += "${tag}, "
+                                        }
+                                    }
+
+                                    val inflater = LayoutInflater.from(requireContext())
+                                    val itemLayout = inflater.inflate(R.layout.exercise_item_routine, null)
+
+                                    val marginLayoutParams = LinearLayout.LayoutParams(
+                                        LinearLayout.LayoutParams.MATCH_PARENT,
+                                        resources.getDimensionPixelSize(R.dimen.exer_item_height)
+                                    )
+                                    marginLayoutParams.setMargins(0, 0, 0, resources.getDimensionPixelSize(R.dimen.bottom_margin))
+                                    itemLayout.layoutParams = marginLayoutParams
+
+                                    val nameView = itemLayout.findViewById<TextView>(R.id.exerciseName)
+                                    nameView.text = name
+
+                                    val exerciseInfo = itemLayout.findViewById<TextView>(R.id.exerciseInfo)
+                                    if (containsOnlyDigits(reps_duration)){
+                                        exerciseInfo.text = "${reps_duration} reps - ${sets} set(s)\nEst.: ${replaceTimeUnits(est_time)}"
+                                    } else {
+                                        exerciseInfo.text = "${replaceTimeUnits(reps_duration)} ${sets} set(s)\nEst.: ${replaceTimeUnits(est_time)}"
+                                    }
+
+                                    val exerciseTags = itemLayout.findViewById<TextView>(R.id.exerciseTags)
+                                    exerciseTags.text = tagsString
+
+                                    val removeFromRoutineButton = itemLayout.findViewById<ImageButton>(R.id.removeFromRoutineButton)
+                                    val fadeIn = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_in)
+                                    val fadeOut = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_out)
+
+                                    removeFromRoutineButton.setOnClickListener{
+                                        removeFromRoutineButton.startAnimation(fadeOut)
+
+                                        removeFromRoutine(name, id)
+                                        exercisesContainer.removeView(itemLayout)
+
+                                        removeFromRoutineButton.startAnimation(fadeIn)
+                                    }
+
+                                    val layout = itemLayout.findViewById<LinearLayout>(R.id.layout)
+                                    layout.setOnClickListener{
+                                        replaceFragmentWithAnimWithData(ExerciseItemFragment(), id, ::routineList.get())
+                                    }
+
+                                    withContext(Dispatchers.Main) {
+                                        exercisesContainer.addView(itemLayout)
+                                    }
+
                                 }
                             }
 
-                            val inflater = LayoutInflater.from(requireContext())
-                            val itemLayout = inflater.inflate(R.layout.exercise_item_routine, null)
+                        } catch (e: Exception) {
+                            // Handle exceptions
+                            println("Error fetching documents: ${e.message}")
+                            Toast.makeText(context, "Error loading exercises", Toast.LENGTH_SHORT).show()
+                        }
 
-                            val marginLayoutParams = LinearLayout.LayoutParams(
-                                LinearLayout.LayoutParams.MATCH_PARENT,
-                                resources.getDimensionPixelSize(R.dimen.exer_item_height)
-                            )
-                            marginLayoutParams.setMargins(0, 0, 0, resources.getDimensionPixelSize(R.dimen.bottom_margin))
-                            itemLayout.layoutParams = marginLayoutParams
 
-                            val nameView = itemLayout.findViewById<TextView>(R.id.exerciseName)
-                            nameView.text = name
-
-                            val exerciseInfo = itemLayout.findViewById<TextView>(R.id.exerciseInfo)
-                            if (containsOnlyDigits(reps_duration)){
-                                exerciseInfo.text = "${reps_duration} reps - ${sets} set(s)\nEst.: ${replaceTimeUnits(est_time)}"
-                            } else {
-                                exerciseInfo.text = "${replaceTimeUnits(reps_duration)} ${sets} set(s)\nEst.: ${replaceTimeUnits(est_time)}"
-                            }
-
-                            val exerciseTags = itemLayout.findViewById<TextView>(R.id.exerciseTags)
-                            exerciseTags.text = tagsString
-
-                            val removeFromRoutineButton = itemLayout.findViewById<ImageButton>(R.id.removeFromRoutineButton)
-                            val fadeIn = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_in)
-                            val fadeOut = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_out)
-
-                            removeFromRoutineButton.setOnClickListener{
-                                removeFromRoutineButton.startAnimation(fadeOut)
-
-                                removeFromRoutine(name, id)
-                                exercisesContainer.removeView(itemLayout)
-
-                                removeFromRoutineButton.startAnimation(fadeIn)
-                            }
-
-                            val layout = itemLayout.findViewById<LinearLayout>(R.id.layout)
-                            layout.setOnClickListener{
-                                replaceFragmentWithAnimWithData(ExerciseItemFragment(), id)
-                            }
-
-                            exercisesContainer.addView(itemLayout)
                         }
                     }
+                }
+    }
+
+    suspend fun getDocumentsInOrder(documentIds: List<String>): List<DocumentSnapshot> {
+        return coroutineScope {
+            val db = FirebaseFirestore.getInstance()
+
+            val results = mutableListOf<DocumentSnapshot>()
+
+            for (documentId in documentIds) {
+                val docRef = db.collection("exercises").document(documentId)
+                val documentSnapshot = docRef.get().await()
+
+                if (documentSnapshot.exists()) {
+                    results.add(documentSnapshot)
+                } else {
+                    // Handle the case where the document doesn't exist
+                    // results.add(documentSnapshot)
+                }
             }
+
+            results
         }
     }
 
@@ -305,6 +366,11 @@ class RoutineFragment : Fragment() {
                     )
 
                     routineList?.remove(exerciseData)
+
+                    //update global var
+                    if (routineList != null) {
+                        ::routineList.set(routineList)
+                    }
 
                     val updatedRoutine = mapOf(
                         "name" to routineName,
@@ -387,9 +453,15 @@ class RoutineFragment : Fragment() {
         linearLayout.addView(textView)
     }
 
-    private fun replaceFragmentWithAnimWithData(fragment: Fragment, exerciseID: String) {
+    private fun replaceFragmentWithAnimWithData(fragment: Fragment, exerciseID: String, exerciseItemListData: ArrayList<Map<String, Any>>) {
+
+        val exerciseIndex = exerciseItemListData.indexOfFirst { it["exerciseID"] == exerciseID }
+
         val bundle = Bundle()
         bundle.putString("exerciseID", exerciseID)
+        bundle.putBoolean("isPartOfRoutine", true)
+        bundle.putInt("exerciseIndex", exerciseIndex)
+        bundle.putSerializable("exerciseItemList", exerciseItemListData)
 
         val newFragment = fragment
         newFragment.arguments = bundle
@@ -403,7 +475,7 @@ class RoutineFragment : Fragment() {
             R.anim.slide_out_right // Pop exit animation (for back navigation)
         )
         fragmentTransaction.replace(R.id.fragment_container, newFragment)
-        fragmentTransaction.addToBackStack(null)
+        fragmentTransaction.addToBackStack("RoutineFragment")
         fragmentTransaction.commit()
     }
 

@@ -23,17 +23,18 @@
             <TextView
                 android:id="@+id/exerciseName"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="60dp"
                 android:fontFamily="@font/roboto_black"
                 android:text="Push-Ups"
                 android:textColor="@color/off_white"
                 android:gravity="center"
                 android:padding="8dp"
                 android:autoSizeTextType="uniform"
-                app:autoSizeMinTextSize="16sp"
-                app:autoSizeMaxTextSize="20sp"
+                app:autoSizeMinTextSize="11sp"
+                app:autoSizeMaxTextSize="14sp"
                 app:autoSizeStepGranularity="1sp"
                 app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent" />
 
@@ -74,6 +75,10 @@
                     android:paddingBottom="2dp"
                     android:paddingStart="14dp"
                     android:paddingEnd="14dp"
+                    android:autoSizeTextType="uniform"
+                    android:autoSizeMinTextSize="12sp"
+                    android:autoSizeMaxTextSize="14sp"
+                    android:autoSizeStepGranularity="1sp"
                     android:text="Triceps, Chest, Shoulders, Trs, Chest, Shoulders"
                     android:textColor="@color/primary"
                     app:layout_constraintBottom_toBottomOf="parent" />

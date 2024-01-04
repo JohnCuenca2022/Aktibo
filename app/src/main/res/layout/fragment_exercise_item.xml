@@ -21,6 +21,46 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <ImageButton
+        android:id="@+id/backToRoutineListButton"
+        android:layout_width="34dp"
+        android:layout_height="34dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="10dp"
+        android:visibility="gone"
+        android:scaleType="fitXY"
+        android:src="@drawable/exit_arrow_icon"
+        android:background="@color/transparent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"/>
+
+    <ImageButton
+        android:id="@+id/nextExerciseButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginEnd="10dp"
+        android:visibility="gone"
+        android:scaleType="fitXY"
+        android:src="@drawable/circle_right_arrow_icon"
+        android:background="@color/transparent"
+        app:layout_constraintTop_toTopOf="@+id/textViewExerciseName"
+        app:layout_constraintBottom_toBottomOf="@+id/textViewExerciseName"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <ImageButton
+        android:id="@+id/previousExerciseButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="10dp"
+        android:visibility="gone"
+        android:scaleType="fitXY"
+        android:src="@drawable/circle_left_arrow_icon"
+        android:background="@color/transparent"
+        app:layout_constraintTop_toTopOf="@+id/textViewExerciseName"
+        app:layout_constraintBottom_toBottomOf="@+id/textViewExerciseName"
+        app:layout_constraintStart_toStartOf="parent"/>
+
+
     <com.elyeproj.loaderviewlibrary.LoaderTextView
         android:id="@+id/textViewExerciseNameLoader"
         android:layout_width="wrap_content"
@@ -41,7 +81,7 @@
 
     <TextView
         android:id="@+id/textViewExerciseName"
-        android:layout_width="wrap_content"
+        android:layout_width="240dp"
         android:minWidth="160dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
@@ -51,6 +91,11 @@
         android:textStyle="bold"
         android:textColor="@color/primary"
         android:textSize="22sp"
+        android:autoSizeTextType="uniform"
+        android:maxLines="1"
+        app:autoSizeMinTextSize="11sp"
+        app:autoSizeMaxTextSize="22sp"
+        app:autoSizeStepGranularity="1sp"
         android:visibility="invisible"
         app:width_weight="1"
         app:height_weight="1"

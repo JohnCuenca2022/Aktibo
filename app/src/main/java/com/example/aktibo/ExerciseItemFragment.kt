@@ -12,16 +12,20 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.MediaController
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import android.widget.VideoView
+import androidx.activity.OnBackPressedCallback
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE
 import com.elyeproj.loaderviewlibrary.LoaderTextView
 import com.example.aktibo.LoginActivity.Companion.TAG
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FieldValue
@@ -33,6 +37,16 @@ import java.util.regex.Pattern
 
 class ExerciseItemFragment : Fragment() {
     private lateinit var exerciseID: String
+
+    private lateinit var backToRoutineListButton: ImageButton
+    private lateinit var previousExerciseButton: ImageButton
+    private lateinit var nextExerciseButton: ImageButton
+
+    var canShowExitDialog = true
+
+    var isPartOfRoutine = false
+    var exerciseIndex = 0
+    var exerciseItemList = ArrayList<Map<String, Any>>()
 
     private lateinit var videoURL: String
     private lateinit var videoView: VideoView
@@ -61,6 +75,15 @@ class ExerciseItemFragment : Fragment() {
             if (data != null) {
                 exerciseID = data
             }
+            val isPartOfRoutineData = bundle.getBoolean("isPartOfRoutine")
+            val exerciseIndexData = bundle.getInt("exerciseIndex")
+            val exerciseItemListData = bundle.getSerializable("exerciseItemList")
+            isPartOfRoutine = isPartOfRoutineData
+            exerciseIndex = exerciseIndexData
+            if (exerciseItemListData != null){
+                exerciseItemList = exerciseItemListData as ArrayList<Map<String, Any>>
+            }
+
         }
     }
 
@@ -70,6 +93,46 @@ class ExerciseItemFragment : Fragment() {
     ): View? {
         // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_exercise_item, container, false)
+
+        activity?.onBackPressedDispatcher?.addCallback(viewLifecycleOwner, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (isPartOfRoutine){
+                    if (canShowExitDialog) {
+                        showExitDialog()
+                    }
+
+                } else {
+                    activity?.supportFragmentManager?.popBackStack()
+                }
+
+            }
+        })
+
+        backToRoutineListButton = view.findViewById(R.id.backToRoutineListButton)
+        previousExerciseButton = view.findViewById(R.id.previousExerciseButton)
+        nextExerciseButton = view.findViewById(R.id.nextExerciseButton)
+
+        if (isPartOfRoutine) {
+            backToRoutineListButton.visibility = View.VISIBLE
+            if (exerciseIndex != 0){
+                previousExerciseButton.visibility = View.VISIBLE
+            }
+            if (exerciseIndex != exerciseItemList.size-1){
+                nextExerciseButton.visibility = View.VISIBLE
+            }
+
+            backToRoutineListButton.setOnClickListener{
+                showExitDialog()
+            }
+            previousExerciseButton.setOnClickListener{
+                val exerciseID = exerciseItemList[exerciseIndex-1]["exerciseID"].toString()
+                replaceFragmentWithAnimWithDataLeft(ExerciseItemFragment(), exerciseID, exerciseIndex-1, exerciseItemList)
+            }
+            nextExerciseButton.setOnClickListener{
+                val exerciseID = exerciseItemList[exerciseIndex+1]["exerciseID"].toString()
+                replaceFragmentWithAnimWithData(ExerciseItemFragment(), exerciseID, exerciseIndex+1, exerciseItemList)
+            }
+        }
 
         videoView = view.findViewById(R.id.videoView)
         textViewExerciseName = view.findViewById(R.id.textViewExerciseName)
@@ -87,6 +150,28 @@ class ExerciseItemFragment : Fragment() {
         buttonExerciseFinish = view.findViewById(R.id.buttonExerciseFinish)
 
         return view
+    }
+
+    private fun showExitDialog(){
+        canShowExitDialog = false
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Exit Routine")
+            .setMessage("Are you sure you want to exit?")
+            .setNeutralButton(resources.getString(R.string.cancel)) { dialog, which ->
+                canShowExitDialog = true
+            }
+            .setPositiveButton("Exit") { dialog, which ->
+                canShowExitDialog = true
+                parentFragmentManager.popBackStack("RoutineFragment", POP_BACK_STACK_INCLUSIVE)
+            }
+            .setOnDismissListener {
+                canShowExitDialog = true
+            }
+            .setOnCancelListener {
+                canShowExitDialog = true
+            }
+            .show()
     }
 
     // Function to start the timer
@@ -123,7 +208,9 @@ class ExerciseItemFragment : Fragment() {
     // Override onStop to cancel the CountDownTimer when the activity is stopped
     override fun onStop() {
         super.onStop()
-        countDownTimer.cancel()
+        if (::countDownTimer.isInitialized){
+            countDownTimer.cancel()
+        }
     }
 
     override fun onResume() {
@@ -349,6 +436,52 @@ class ExerciseItemFragment : Fragment() {
                     Toast.makeText(context, "Failed to record exercise", Toast.LENGTH_SHORT).show()
                 }
         }
+    }
+
+    private fun replaceFragmentWithAnimWithData(fragment: Fragment, exerciseID: String, exerciseIndex: Int, exerciseItemListData: ArrayList<Map<String, Any>>) {
+        val bundle = Bundle()
+        bundle.putString("exerciseID", exerciseID)
+        bundle.putBoolean("isPartOfRoutine", true)
+        bundle.putInt("exerciseIndex", exerciseIndex)
+        bundle.putSerializable("exerciseItemList", exerciseItemListData)
+
+        val newFragment = fragment
+        newFragment.arguments = bundle
+
+        val fragmentManager = getParentFragmentManager()
+        val fragmentTransaction = fragmentManager.beginTransaction()
+        fragmentTransaction.setCustomAnimations(
+            R.anim.slide_in_right, // Enter animation
+            R.anim.slide_out_left, // Exit animation
+            R.anim.slide_in_left, // Pop enter animation (for back navigation)
+            R.anim.slide_out_right // Pop exit animation (for back navigation)
+        )
+        fragmentTransaction.replace(R.id.fragment_container, newFragment)
+        fragmentTransaction.addToBackStack(null)
+        fragmentTransaction.commit()
+    }
+
+    private fun replaceFragmentWithAnimWithDataLeft(fragment: Fragment, exerciseID: String, exerciseIndex: Int, exerciseItemListData: ArrayList<Map<String, Any>>) {
+        val bundle = Bundle()
+        bundle.putString("exerciseID", exerciseID)
+        bundle.putBoolean("isPartOfRoutine", true)
+        bundle.putInt("exerciseIndex", exerciseIndex)
+        bundle.putSerializable("exerciseItemList", exerciseItemListData)
+
+        val newFragment = fragment
+        newFragment.arguments = bundle
+
+        val fragmentManager = getParentFragmentManager()
+        val fragmentTransaction = fragmentManager.beginTransaction()
+        fragmentTransaction.setCustomAnimations(
+            R.anim.slide_in_left, // Enter animation
+            R.anim.slide_out_right, // Exit animation
+            R.anim.slide_in_left, // Pop enter animation (for back navigation)
+            R.anim.slide_out_right // Pop exit animation (for back navigation)
+        )
+        fragmentTransaction.replace(R.id.fragment_container, newFragment)
+        fragmentTransaction.addToBackStack(null)
+        fragmentTransaction.commit()
     }
 
 }

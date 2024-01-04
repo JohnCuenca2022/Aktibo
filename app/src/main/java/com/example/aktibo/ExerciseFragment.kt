@@ -46,6 +46,7 @@ class ExerciseFragment : Fragment() {
     private lateinit var calendarView: CalendarView
     private lateinit var exerciseGoalMessage: TextView
     private lateinit var exerciseGoalButton: ImageButton
+    private lateinit var exerciseRoutinesButton: ImageButton
 
     class DayViewContainer(view: View) : ViewContainer(view) {
         val textView = view.findViewById<TextView>(R.id.calendarDayText)
@@ -151,6 +152,17 @@ class ExerciseFragment : Fragment() {
 
             // Apply fadeIn animation when released
             exerciseGoalButton.startAnimation(fadeIn)
+        }
+
+        exerciseRoutinesButton = view.findViewById(R.id.exerciseRoutinesButton)
+        exerciseRoutinesButton.setOnClickListener{
+            // Apply fadeOut animation when pressed
+            exerciseRoutinesButton.startAnimation(fadeOut)
+
+            replaceFragmentWithAnim(ExerciseRoutinesFragment())
+
+            // Apply fadeIn animation when released
+            exerciseRoutinesButton.startAnimation(fadeIn)
         }
 
         return view

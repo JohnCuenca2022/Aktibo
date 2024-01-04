@@ -179,6 +179,39 @@
                     app:layout_constraintTop_toBottomOf="@+id/mealRecipesButtonFrame"/>
 
                 <FrameLayout
+                    android:id="@+id/exerciseRoutinesButtonFrame"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    app:layout_constrainedWidth="true"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/exerciseRoutinesTitle">
+
+                    <ImageButton
+                        android:id="@+id/exerciseRoutinesButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="80dp"
+                        android:layout_gravity="center_horizontal"
+                        android:background="@color/transparent"
+                        android:contentDescription="exercise routines button"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/exercise_routine_button" />
+
+                    <TextView
+                        android:id="@+id/textViewExerciseRoutinesButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical|start"
+                        android:layout_marginStart="10dp"
+                        android:fontFamily="@font/roboto_bold"
+                        android:gravity="center"
+                        android:text="Your Exercise Routines"
+                        android:textColor="@color/primary"
+                        android:textSize="15sp" />
+                </FrameLayout>
+
+                <FrameLayout
                     android:id="@+id/lightExerciseButtonFrame"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -186,7 +219,7 @@
                     app:layout_constrainedWidth="true"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/exerciseRoutinesTitle">
+                    app:layout_constraintTop_toBottomOf="@+id/exerciseRoutinesButtonFrame">
 
                     <ImageButton
                         android:id="@+id/lightExerciseButton"
