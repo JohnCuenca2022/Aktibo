@@ -14,6 +14,12 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,16 +42,32 @@ class NewFoodRecordFragment : Fragment() {
     private lateinit var progressBar: ProgressBar
     private lateinit var button_cancel: Button
     private lateinit var foodDescription: String
+    private lateinit var inflater2: LayoutInflater
+    private lateinit var marginLayoutParams: LinearLayout.LayoutParams
 
     // Edamam Food Database
     val appId = "3aa8e209"
     val appKey = "e27dfa3bd620b88df56e8416fa7de697"
+    var canSaveFoodRecord = true
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_new_food_record, container, false)
+
+        inflater2 = LayoutInflater.from(requireContext())
+
+        marginLayoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            resources.getDimensionPixelSize(R.dimen.exer_item_height)
+        )
+        marginLayoutParams.setMargins(
+            0,
+            0,
+            0,
+            resources.getDimensionPixelSize(R.dimen.bottom_margin)
+        ) // Adjust the margin as needed
 
         linearlayout = view.findViewById(R.id.foodContainerLayout)
         progressBar = view.findViewById(R.id.progressBar4)
@@ -87,19 +109,9 @@ class NewFoodRecordFragment : Fragment() {
                         val FAT = foodItem.nutrients.FAT ?: 0
 
                         // create view item
-                        val inflater = LayoutInflater.from(requireContext())
-                        val itemLayout = inflater.inflate(R.layout.food_record_item, null)
 
-                        val marginLayoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
-                            resources.getDimensionPixelSize(R.dimen.exer_item_height)
-                        )
-                        marginLayoutParams.setMargins(
-                            0,
-                            0,
-                            0,
-                            resources.getDimensionPixelSize(R.dimen.bottom_margin)
-                        ) // Adjust the margin as needed
+                        val itemLayout = inflater2.inflate(R.layout.food_record_item, null)
+
                         itemLayout.layoutParams = marginLayoutParams
 
                         // show values
@@ -128,6 +140,10 @@ class NewFoodRecordFragment : Fragment() {
                         val fat = itemLayout.findViewById<TextView>(R.id.fat)
                         val fatString = formatFloat(FAT.toDouble()) + "g"
                         fat.text = fatString
+
+                        itemLayout.setOnClickListener{
+                            saveFoodRecord(label, formatFloat(quantity.toDouble()).toDouble(), ENERC_KCAL.toDouble(), CHOCDF.toDouble(), PROCNT.toDouble(), FAT.toDouble())
+                        }
 
                         // add to layout
                         linearlayout.addView(itemLayout)
@@ -178,7 +194,7 @@ class NewFoodRecordFragment : Fragment() {
                     }
                 } else {
                     Log.e("Edamam API", "failed reponse")
-                    Toast.makeText(context, "Faled to connect to food database", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "failed to connect to food database", Toast.LENGTH_SHORT).show()
                     val fragmentManager = parentFragmentManager
                     fragmentManager.popBackStack()
                 }
@@ -200,8 +216,70 @@ class NewFoodRecordFragment : Fragment() {
         }
     }
 
-    private fun saveFoodRecord(foodLabel: String, quantity: Double, calories: Double, protein: Double, fat: Double){
+    private fun saveFoodRecord(foodLabel: String, quantity: Double, calories: Double, carbohydrates: Double, protein: Double, fat: Double){
+        if (!canSaveFoodRecord){
+            return
+        }
 
+        canSaveFoodRecord = false
+
+        Log.e("Edamam API", foodLabel)
+        Log.e("Edamam API", quantity.toString())
+        Log.e("Edamam API ENERC_KCAL", calories.toString())
+        Log.e("Edamam API CHOCDF", carbohydrates.toString())
+        Log.e("Edamam API PROCNT", protein.toString())
+        Log.e("Edamam API FAT", fat.toString())
+
+        val builder = AlertDialog.Builder(requireContext())
+        builder.setMessage("You selected ${foodLabel}(${quantity.toInt()})")
+            .setPositiveButton("Confirm") { dialog, _ ->
+                // User confirmed, execute the action
+                val user = Firebase.auth.currentUser
+                user?.let {
+                    val uid = it.uid
+                    val db = Firebase.firestore
+
+                    val mealRecord = mapOf(
+                        "date" to Timestamp.now(),
+                        "foodLabel" to foodLabel,
+                        "quantity" to quantity,
+                        "calories" to roundToTwoDecimalPlaces(calories),
+                        "carbohydrates" to roundToTwoDecimalPlaces(carbohydrates),
+                        "protein" to roundToTwoDecimalPlaces(protein),
+                        "fat" to roundToTwoDecimalPlaces(fat)
+                    )
+
+                    val userRef = db.collection("users").document(uid)
+                    userRef
+                        .update("mealRecords", FieldValue.arrayUnion(mealRecord))
+                        .addOnSuccessListener {
+                            Toast.makeText(context, "Meal Recorded", Toast.LENGTH_SHORT).show()
+                            parentFragmentManager.popBackStack()
+                        }
+                        .addOnFailureListener {
+                            Toast.makeText(context, "Failed to record meal", Toast.LENGTH_SHORT).show()
+                        }
+                }
+                dialog.dismiss()
+                canSaveFoodRecord = true
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+                canSaveFoodRecord = true
+            }
+            .setOnDismissListener {
+                canSaveFoodRecord = true
+            }
+            .setOnCancelListener{
+                canSaveFoodRecord = true
+            }
+        val alert = builder.create()
+        alert.show()
+
+    }
+
+    fun roundToTwoDecimalPlaces(number: Double): Double {
+        return "%.${2}f".format(number).toDouble()
     }
 
 }

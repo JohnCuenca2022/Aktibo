@@ -11,6 +11,19 @@ import android.view.animation.AnimationUtils
 import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.time.ZoneId
+import java.util.Calendar
+import java.util.Date
 
 class FoodFragment : Fragment() {
 
@@ -63,6 +76,13 @@ class FoodFragment : Fragment() {
 
         mealRecipesButton.setOnClickListener{
             Log.i(ContentValues.TAG,"Meal Recipes")
+            // Apply fadeOut animation when pressed
+            mealRecipesButton.startAnimation(fadeOut)
+
+            replaceFragmentWithAnim(MealRecipesFragment())
+
+            // Apply fadeIn animation when released
+            mealRecipesButton.startAnimation(fadeIn)
         }
 
         return view
@@ -85,17 +105,78 @@ class FoodFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        AnimationUtil.animateTextViewNumerical(textViewCalories, 0, 100, 1000)
-        AnimationUtil.animateProgressBar(progressBarCalories, 0, 100, 1000)
+        CoroutineScope(Dispatchers.IO).launch{
+            val mealRecords = async {
+                getMealRecords()
+            }.await()
 
-        AnimationUtil.animateTextViewMacros(textViewCarbsCount, 0, 100, 1000)
-        AnimationUtil.animateProgressBar(progressBarCarbs, 0, 100, 1000)
+            var totalCals = 0.0
+            var totalCarbs = 0.0
+            var totalProtein = 0.0
+            var totalFat = 0.0
 
-        AnimationUtil.animateTextViewMacros(textViewProteinCount, 0, 100, 1000)
-        AnimationUtil.animateProgressBar(progressBarProtein, 0, 100, 1000)
+            val todaySubset = mealRecords.filter { isToday((it["date"] as Timestamp).toDate()) }
 
-        AnimationUtil.animateTextViewMacros(textViewFatCount, 0, 100, 1000)
-        AnimationUtil.animateProgressBar(progressBarFat, 0, 100, 1000)
+            todaySubset.forEach {
+                val name = it.get("foodLabel")
+                val cals = it.get("calories").toString().toDouble()
+                val carbs = it.get("carbohydrates").toString().toDouble()
+                val protein = it.get("protein").toString().toDouble()
+                val fat = it.get("fat").toString().toDouble()
+
+                totalCals += cals
+                totalCarbs += carbs
+                totalProtein += protein
+                totalFat += fat
+
+                Log.e("name", name.toString())
+            }
+
+            withContext(Dispatchers.Main) {
+                AnimationUtil.animateTextViewNumerical(textViewCalories, 0, totalCals.toInt(), 1000)
+                AnimationUtil.animateProgressBar(progressBarCalories, 0, totalCals.toInt(), 1000)
+
+                AnimationUtil.animateTextViewMacros(textViewCarbsCount, 0, totalCarbs.toInt(), 1000)
+                AnimationUtil.animateProgressBar(progressBarCarbs, 0, totalCarbs.toInt(), 1000)
+
+                AnimationUtil.animateTextViewMacros(textViewProteinCount, 0, totalProtein.toInt(), 1000)
+                AnimationUtil.animateProgressBar(progressBarProtein, 0, totalProtein.toInt(), 1000)
+
+                AnimationUtil.animateTextViewMacros(textViewFatCount, 0, totalFat.toInt(), 1000)
+                AnimationUtil.animateProgressBar(progressBarFat, 0, totalFat.toInt(), 1000)
+            }
+
+        }
+    }
+
+    private suspend fun getMealRecords(): ArrayList<Map<String, Any>>{
+        val records = CompletableDeferred<ArrayList<Map<String, Any>>>()
+
+        val db = Firebase.firestore
+        val user = Firebase.auth.currentUser
+        user?.let {
+            val uid = it.uid
+            val userRef = db.collection("users").document(uid)
+            userRef.get()
+                .addOnSuccessListener { document ->
+                    if (document != null) {
+                        records.complete(
+                            document.get("mealRecords") as? ArrayList<Map<String, Any>> ?: ArrayList()
+                        )
+                    }
+                }
+        }
+
+        return records.await()
+    }
+
+    fun isToday(date: Date): Boolean {
+        val todayCalendar = Calendar.getInstance()
+        val givenCalendar = Calendar.getInstance()
+        givenCalendar.time = date
+        return todayCalendar.get(Calendar.YEAR) == givenCalendar.get(Calendar.YEAR) &&
+                todayCalendar.get(Calendar.MONTH) == givenCalendar.get(Calendar.MONTH) &&
+                todayCalendar.get(Calendar.DAY_OF_MONTH) == givenCalendar.get(Calendar.DAY_OF_MONTH)
     }
 
 }

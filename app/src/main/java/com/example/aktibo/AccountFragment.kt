@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Context.MODE_PRIVATE
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -20,9 +21,12 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.SwitchCompat
+import androidx.core.content.ContextCompat.getSystemService
 import androidx.fragment.app.Fragment
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -67,6 +71,8 @@ class AccountFragment : Fragment() {
     private lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var userName: String
     private lateinit var imageURL: String
+    var userWeight: Double = 0.0
+    var userHeight: Double = 0.0
 
     var otpDialog = true
     private lateinit var multiFactorResolver: MultiFactorResolver
@@ -79,7 +85,7 @@ class AccountFragment : Fragment() {
         //username and user image
         val usernameTextView = view?.findViewById<TextView>(R.id.username)
         val imageView = view?.findViewById<ImageView>(R.id.userProfileImage)
-        getCurrentUserDetails { username, userImage ->
+        getCurrentUserDetails { username, userImage, userweight, userheight ->
             if (username != null && userImage != null) {
                 // Use the retrieved username and userImage
                 if (usernameTextView != null) {
@@ -99,6 +105,13 @@ class AccountFragment : Fragment() {
                 // Handle the case where the document doesn't exist or is missing fields
                 println("User details not found or incomplete.")
             }
+            if (userheight != null) {
+                userHeight = userheight
+            }
+            if (userweight != null) {
+                userWeight = userweight
+            }
+
         }
 
         //Re-authentication for 2FA
@@ -125,6 +138,11 @@ class AccountFragment : Fragment() {
             } else {
                 replaceFragmentWithAnimAndData("", "")
             }
+        }
+
+        val button_credits = view.findViewById<Button>(R.id.button_credits)
+        button_credits.setOnClickListener{
+            replaceFragmentWithAnim(CreditsFragment())
         }
 
         // Two-Factor Authentication
@@ -167,13 +185,21 @@ class AccountFragment : Fragment() {
             val key = "RemindersPref"
             if (isChecked) {
                 helper.setPreferenceString(key, true, requireContext())
-                createNotificationChannel()
-                scheduleNotification(getTriggerTime(9, 0),
-                    "Good Morning!", "Remember to record your morning meal.", "morning")
-                scheduleNotification(getTriggerTime(15, 0),
-                    "Good Afternoon!", "Remember to record your afternoon meal.", "afternoon")
-                scheduleNotification(getTriggerTime(20, 0),
-                    "Good Evening!", "Remember to record your evening meal.", "evening")
+                //createNotificationChannel()
+                if (isNotificationPermissionGranted()) {
+                    // Permission already granted, proceed with notifications
+                    createNotificationChannel()
+                    scheduleNotification(getTriggerTime(9, 0),
+                        "Good Morning!", "Remember to record your morning meal.", "morning")
+                    scheduleNotification(getTriggerTime(15, 0),
+                        "Good Afternoon!", "Remember to record your afternoon meal.", "afternoon")
+                    scheduleNotification(getTriggerTime(20, 0),
+                        "Good Evening!", "Remember to record your evening meal.", "evening")
+                } else {
+                    // Permission not granted, request it
+                    requestNotificationPermission()
+                }
+
             } else {
                 // Switch is unchecked
                 helper.setPreferenceString(key, false, requireContext())
@@ -195,6 +221,27 @@ class AccountFragment : Fragment() {
                 // Switch is unchecked
                 helper.setPreferenceString(key, false, requireContext())
                 helper.cancelNotificationAlarm(requireContext(), 2020)
+            }
+        }
+
+        val switchTheme: SwitchCompat = view.findViewById(R.id.switchTheme)
+
+        val NightModeInt = helper.getPreferenceInt("NightModeInt", requireContext())
+        if (NightModeInt == 1) {
+            switchTheme.isChecked = true
+        } else {
+            switchTheme.isChecked = false
+        }
+
+        switchTheme.setOnCheckedChangeListener { buttonView, isChecked ->
+            if (isChecked) {
+                val helper = MyHelperFunctions()
+                helper.setPreferenceInt("NightModeInt", 1, requireContext())
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+            } else {
+                val helper = MyHelperFunctions()
+                helper.setPreferenceInt("NightModeInt", 0, requireContext())
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
             }
         }
 
@@ -233,14 +280,76 @@ class AccountFragment : Fragment() {
         return view
     }
 
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                // Permission granted, you can proceed with notifications
+                createNotificationChannel()
+                scheduleNotification(getTriggerTime(9, 0),
+                    "Good Morning!", "Remember to record your morning meal.", "morning")
+                scheduleNotification(getTriggerTime(15, 0),
+                    "Good Afternoon!", "Remember to record your afternoon meal.", "afternoon")
+                scheduleNotification(getTriggerTime(20, 0),
+                    "Good Evening!", "Remember to record your evening meal.", "evening")
+            } else {
+                // Permission denied, handle accordingly
+                // You might want to show a message to the user
+            }
+        }
+
+    private fun isNotificationPermissionGranted(): Boolean {
+        return when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> {
+                val manager =
+                    requireActivity().getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                manager.areNotificationsEnabled()
+            }
+            else -> true // For versions below O, no explicit permission is required
+        }
+    }
+    private fun requestNotificationPermission() {
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> {
+                // Request notification permission for Android O and above
+                requestPermissionLauncher.launch("android.permission.USE_FULL_SCREEN_INTENT")
+            }
+            else -> {
+                // For versions below O, no explicit permission is required
+                createNotificationChannel()
+                scheduleNotification(getTriggerTime(9, 0),
+                    "Good Morning!", "Remember to record your morning meal.", "morning")
+                scheduleNotification(getTriggerTime(15, 0),
+                    "Good Afternoon!", "Remember to record your afternoon meal.", "afternoon")
+                scheduleNotification(getTriggerTime(20, 0),
+                    "Good Evening!", "Remember to record your evening meal.", "evening")
+            }
+        }
+    }
+
     private fun replaceFragmentWithAnimAndData(imageURL: String, username: String) {
         val fragment = EditAccountFragment()
         val args = Bundle()
         args.putString("username", username)
         args.putString("imageURL", imageURL)
+        userHeight.let { args.putDouble("userHeight", it) }
+        userWeight.let { args.putDouble("userWeight", it) }
         fragment.setArguments(args)
 
         val fragmentManager = getParentFragmentManager()
+        val fragmentTransaction = fragmentManager.beginTransaction()
+        fragmentTransaction.setCustomAnimations(
+            R.anim.slide_in_right, // Enter animation
+            R.anim.slide_out_left, // Exit animation
+            R.anim.slide_in_left, // Pop enter animation (for back navigation)
+            R.anim.slide_out_right // Pop exit animation (for back navigation)
+        )
+        fragmentTransaction.replace(R.id.fragment_container, fragment)
+        fragmentTransaction.addToBackStack(null)
+        fragmentTransaction.commit()
+    }
+
+    private fun replaceFragmentWithAnim(fragment: Fragment) {
+        val fragmentManager = parentFragmentManager
         val fragmentTransaction = fragmentManager.beginTransaction()
         fragmentTransaction.setCustomAnimations(
             R.anim.slide_in_right, // Enter animation
@@ -583,7 +692,7 @@ class AccountFragment : Fragment() {
     }
 
 
-    fun getCurrentUserDetails(callback: (username: String?, userImage: String?) -> Unit) {
+    fun getCurrentUserDetails(callback: (username: String?, userImage: String?, userWeight: Double?, userHeight: Double?) -> Unit) {
         val currentUser = FirebaseAuth.getInstance().currentUser
         val firestore = FirebaseFirestore.getInstance()
         val usersCollection = firestore.collection("users")
@@ -601,16 +710,18 @@ class AccountFragment : Fragment() {
                         if (documentSnapshot != null && documentSnapshot.exists()) {
                             val username = documentSnapshot.getString("username")
                             val userImage = documentSnapshot.getString("userImage")
+                            val userWeight = documentSnapshot.getDouble("weight")
+                            val userHeight = documentSnapshot.getDouble("height")
 
                             // Invoke the callback function with the retrieved fields
-                            callback(username, userImage)
+                            callback(username, userImage, userWeight, userHeight)
                         } else {
                             // Document doesn't exist or doesn't have the required fields
-                            callback(null, null)
+                            callback(null, null, null, null)
                         }
                     } else {
                         // Handle the error
-                        callback(null, null)
+                        callback(null, null, null, null)
                     }
                 }
         }

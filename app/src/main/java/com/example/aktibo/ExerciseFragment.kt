@@ -362,9 +362,14 @@ class ExerciseFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        val stretchesExerciseButton = view.findViewById<ImageButton>(R.id.stretchesExerciseButton)
+        stretchesExerciseButton.setOnClickListener{
+            replaceFragmentWithAnimWithData(ExerciseRegionsFragment(), "stretching")
+        }
+
         val lightExerciseButton = view.findViewById<ImageButton>(R.id.lightExerciseButton)
         lightExerciseButton.setOnClickListener{
-            replaceFragmentWithAnimWithData(ExerciseRegionsFragment(), "light")
+            replaceFragmentWithAnimWithData(ExerciseListFragment(), "light")
         }
 
         val moderateExerciseButton = view.findViewById<ImageButton>(R.id.moderateExerciseButton)

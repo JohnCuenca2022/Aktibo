@@ -15,11 +15,13 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AnimationUtils
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
@@ -28,6 +30,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.github.mikephil.charting.animation.Easing
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.charts.LineChart
@@ -61,6 +64,9 @@ import com.itextpdf.text.PageSize
 import com.itextpdf.text.pdf.BaseFont
 import com.itextpdf.text.pdf.PdfContentByte
 import com.itextpdf.text.pdf.PdfWriter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
 import org.apache.poi.ss.usermodel.Cell
 import org.apache.poi.ss.usermodel.Row
@@ -80,8 +86,11 @@ class DetailedWeightGraphFragment : Fragment() {
     private lateinit var auth: FirebaseAuth
     private val MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 222
     private lateinit var lineChart: LineChart
+    private lateinit var graphProgressBar: ProgressBar
     private lateinit var datePickerButton: Button
     private lateinit var workbook: Workbook
+
+    private lateinit var backImageButton: ImageButton
 
     var canShowDatePicker = true
     var canShowGenerateReportDialog = true
@@ -91,6 +100,19 @@ class DetailedWeightGraphFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_detailed_weight_graph, container, false)
+
+        // load press animations
+        val fadeIn = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_in)
+        val fadeOut = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_out)
+
+        backImageButton = view.findViewById(R.id.backImageButton)
+        backImageButton.setOnClickListener {
+            backImageButton.startAnimation(fadeOut)
+            parentFragmentManager.popBackStack()
+            backImageButton.startAnimation(fadeIn)
+        }
+
+        graphProgressBar = view.findViewById(R.id.graphProgressBar)
 
         // Set the minimum date to a specific date (e.g., January 1, 2023)
         val minDate = Calendar.getInstance()
@@ -163,8 +185,9 @@ class DetailedWeightGraphFragment : Fragment() {
             textView4.text = endFormatted
 
             linearLayout.visibility = View.VISIBLE
-
-            getWeightRecord(Date(startDate), Date(endDate))
+            lifecycleScope.launch {
+                getWeightRecord(Date(startDate), Date(endDate))
+            }
 
             canShowDatePicker = true
         }
@@ -190,83 +213,88 @@ class DetailedWeightGraphFragment : Fragment() {
         return view
     }
 
-    fun getWeightRecord(startDate: Date, endDate: Date) {
+    suspend fun getWeightRecord(startDate: Date, endDate: Date) {
+        withContext(Dispatchers.Default){
+            // get user
+            val user = Firebase.auth.currentUser
+            user?.let {
+                val uid = it.uid // user ID
+                // get user data
+                val db = Firebase.firestore
+                val docRef = db.collection("users").document(uid)
+                docRef.get()
+                    .addOnSuccessListener { document ->
+                        graphProgressBar.visibility = View.VISIBLE
+                        lifecycleScope.launch {
+                            if (document != null) {
+                                val weightRecordsList: ArrayList<Map<String, Any>> = ArrayList()
 
-        // get user
-        val user = Firebase.auth.currentUser
-        user?.let {
-            val uid = it.uid // user ID
-            // get user data
-            val db = Firebase.firestore
-            val docRef = db.collection("users").document(uid)
-            docRef.get()
-                .addOnSuccessListener { document ->
-                    if (document != null) {
-                        val weightRecordsList: ArrayList<Map<String, Any>> = ArrayList()
+                                val weightRecords = document.get("weightRecords") as? ArrayList<Map<Any, Any>> ?: ArrayList()
 
-                        val weightRecords = document.get("weightRecords") as? ArrayList<Map<Any, Any>> ?: ArrayList()
+                                val currentWeight = document.getDouble("weight") ?: 0.0
+                                val numberOfDays = getNumberOfDays(startDate, endDate)
+                                val daysDates = getDatesInRange(startDate, endDate)
+                                if (weightRecords.isEmpty()){ // no entries
+                                    for (i in 0 until numberOfDays) { // loop 7 times
+                                        val date = daysDates[i]
 
-                        val currentWeight = document.getDouble("weight") ?: 0.0
-                        val numberOfDays = getNumberOfDays(startDate, endDate)
-                        val daysDates = getDatesInRange(startDate, endDate)
-                        if (weightRecords.isEmpty()){ // no entries
-                            for (i in 0 until numberOfDays) { // loop 7 times
-                                val date = daysDates[i]
-
-                                val dataPoint = mutableMapOf(
-                                    "date" to date,
-                                    "weight" to currentWeight
-                                )
-                                weightRecordsList.add(dataPoint)
-                            }
-                        } else {
-                            for (i in 0 until numberOfDays) { // loop 7 times
-                                val day = daysDates[i]
-                                val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                                val dayString = sdf.format(day)
-
-                                var hasDataPoint = false
-                                for (map in weightRecords) {
-                                    val mapTimestamp = map["date"] as Timestamp
-                                    val weight = map["weight"] as Double
-                                    val mapDate = sdf.format(mapTimestamp.toDate())
-                                    if (mapDate == dayString) {
                                         val dataPoint = mutableMapOf(
-                                            "date" to day,
-                                            "weight" to weight
+                                            "date" to date,
+                                            "weight" to currentWeight
                                         )
                                         weightRecordsList.add(dataPoint)
-                                        hasDataPoint = true
-                                        break
+                                    }
+                                } else {
+                                    for (i in 0 until numberOfDays) { // loop 7 times
+                                        val day = daysDates[i]
+                                        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                        val dayString = sdf.format(day)
+
+                                        var hasDataPoint = false
+                                        for (map in weightRecords) {
+                                            val mapTimestamp = map["date"] as Timestamp
+                                            val weight = map["weight"] as Double
+                                            val mapDate = sdf.format(mapTimestamp.toDate())
+                                            if (mapDate == dayString) {
+                                                val dataPoint = mutableMapOf(
+                                                    "date" to day,
+                                                    "weight" to weight
+                                                )
+                                                weightRecordsList.add(dataPoint)
+                                                hasDataPoint = true
+                                                break
+                                            }
+                                        }
+
+                                        if(!hasDataPoint && i == 0){
+                                            val dataPoint = mutableMapOf(
+                                                "date" to day,
+                                                "weight" to currentWeight
+                                            )
+                                            weightRecordsList.add(dataPoint)
+                                        } else if (!hasDataPoint){
+                                            val previousWeight = weightRecordsList[i-1]["weight"] as Double
+                                            val dataPoint = mutableMapOf(
+                                                "date" to day,
+                                                "weight" to previousWeight
+                                            )
+                                            weightRecordsList.add(dataPoint)
+                                        }
+
                                     }
                                 }
 
-                                if(!hasDataPoint && i == 0){
-                                    val dataPoint = mutableMapOf(
-                                        "date" to day,
-                                        "weight" to currentWeight
-                                    )
-                                    weightRecordsList.add(dataPoint)
-                                } else if (!hasDataPoint){
-                                    val previousWeight = weightRecordsList[i-1]["weight"] as Double
-                                    val dataPoint = mutableMapOf(
-                                        "date" to day,
-                                        "weight" to previousWeight
-                                    )
-                                    weightRecordsList.add(dataPoint)
+                                if (!weightRecordsList.isEmpty()){
+                                    withContext(Dispatchers.Main) {
+                                        updateChart(weightRecordsList)
+                                        createExcel(weightRecordsList)
+                                    }
                                 }
-
                             }
                         }
-
-                        if (!weightRecordsList.isEmpty()){
-                            updateChart(weightRecordsList)
-                            createExcel(weightRecordsList)
-                        }
                     }
-                }
+            }
         }
-
     }
 
     fun getDatesInRange(startDate: Date, endDate: Date): List<Date> {
@@ -369,6 +397,8 @@ class DetailedWeightGraphFragment : Fragment() {
         //lineChart.setFitBars(true)
 
         lineChart.invalidate()
+
+        graphProgressBar.visibility = View.GONE
     }
 
     private fun createExcel(weightRecordsList: ArrayList<Map<String, Any>>){
@@ -379,6 +409,13 @@ class DetailedWeightGraphFragment : Fragment() {
         val sheet: Sheet = workbook.createSheet("Sheet1")
 
         var index = 0
+
+        val row: Row = sheet.createRow(index)
+        val cell: Cell = row.createCell(0)
+        cell.setCellValue("Date")
+        val cell2: Cell = row.createCell(1)
+        cell2.setCellValue("Weight")
+        index++
 
         for (weightRecord in weightRecordsList) {
             val date = weightRecord["date"] as Date
@@ -409,6 +446,7 @@ class DetailedWeightGraphFragment : Fragment() {
         val pdfFilePath = File(externalStorageDir, pdfFileName).toString()
 
         val document = Document(PageSize.LETTER)
+        document.setMargins(72f, 72f, 72f, 72f)
         val pdfWriter = PdfWriter.getInstance(document, FileOutputStream(pdfFilePath))
         document.open()
 
@@ -421,17 +459,73 @@ class DetailedWeightGraphFragment : Fragment() {
             document.newPage()
             contentByte.setFontAndSize(baseFont, 12f)
 
-            for (rowIndex in 0 until sheet.physicalNumberOfRows) {
+            // Track the vertical position on the current page
+            var verticalPosition = document.top()
+            var horizontalPosition = document.left()
+            val lineSpacing = 3
+            val lineHeight = 20
+            val entriesPerColumn = 25
+            val columnsPerPage = 2
+            val columnSpacing = 300f
+
+            var currentColumn = 1
+
+            // show column labels
+            val rowLabels = sheet.getRow(0)
+            for (cellIndex in 0 until rowLabels.physicalNumberOfCells) {
+                val cell = rowLabels.getCell(cellIndex)
+                contentByte.setTextMatrix(cellIndex.toFloat() * 100 + horizontalPosition, verticalPosition)
+                contentByte.showText(cell.toString())
+            }
+            // Update the vertical position for the next row
+            verticalPosition -= (lineSpacing + lineHeight)
+
+            for (rowIndex in 1 until sheet.physicalNumberOfRows) {
                 val row = sheet.getRow(rowIndex)
 
+                // Check if the row will fit on the current page
+                if (rowIndex % entriesPerColumn == 1 && rowIndex != 1) {
+                    currentColumn++
+                    // check if column number has exceeded columns per page
+                    // if not, adjust horizontal position to the next column
+                    if (currentColumn <= columnsPerPage){
+                        horizontalPosition += columnSpacing
+                        verticalPosition = document.top()
+                    } else { // if it has exceeded
+                        // create a new page
+                        document.newPage()
+                        contentByte.setFontAndSize(baseFont, 12f)
+                        verticalPosition = document.top()
+                        horizontalPosition = document.left()
+                        currentColumn = 1
+                    }
+
+                    // show column labels
+                    val rowLabels = sheet.getRow(0)
+                    for (cellIndex in 0 until rowLabels.physicalNumberOfCells) {
+                        val cell = rowLabels.getCell(cellIndex)
+                        contentByte.setTextMatrix(cellIndex.toFloat() * 100 + horizontalPosition, verticalPosition)
+                        contentByte.showText(cell.toString())
+                    }
+
+                    // Update the vertical position for the next row
+                    verticalPosition -= (lineSpacing + lineHeight)
+                    println("vertical position: $verticalPosition")
+                }
+
+                // show cell item
                 for (cellIndex in 0 until row.physicalNumberOfCells) {
                     val cell = row.getCell(cellIndex)
 
-                    // Adjust x, y coordinates and other parameters as needed
-                    contentByte.setTextMatrix(cellIndex.toFloat() * 100, document.top() - rowIndex * 20)
+                    contentByte.setTextMatrix(cellIndex.toFloat() * 100 + horizontalPosition, verticalPosition)
                     contentByte.showText(cell.toString())
                 }
+
+                // Update the vertical position for the next row
+                verticalPosition -= (lineSpacing + lineHeight)
+                println("vertical position: $verticalPosition")
             }
+
         }
 
         document.close()
@@ -486,6 +580,7 @@ class DetailedWeightGraphFragment : Fragment() {
             builder.setItems(options) { _, which ->
                 when (which) {
                     0 -> {
+                        Toast.makeText(requireContext(), "Generating Excel file", Toast.LENGTH_SHORT).show()
                         val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
                         val currentDateAndTime = dateFormat.format(Date())
                         val fileName = "aktibo-weight_$currentDateAndTime.xls"
@@ -514,6 +609,7 @@ class DetailedWeightGraphFragment : Fragment() {
                         }
                     }
                     1 -> {
+                        Toast.makeText(requireContext(), "Generating PDF file", Toast.LENGTH_SHORT).show()
                         val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
                         val currentDateAndTime = dateFormat.format(Date())
                         val pdfFileName = "aktibo-weight_$currentDateAndTime.pdf"

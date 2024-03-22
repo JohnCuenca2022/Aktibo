@@ -67,6 +67,18 @@ class MyHelperFunctions {
         return prefs.getBoolean(key, true)
     }
 
+    fun setPreferenceInt(key: String, value: Int, context: Context) {
+        val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val editor = prefs.edit()
+        editor.putInt(key, value)
+        editor.apply()
+    }
+
+    fun getPreferenceInt(key: String, context: Context): Int {
+        val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getInt(key, 0)
+    }
+
     fun cancelNotificationAlarm(context: Context, NOTIFICATION_ID: Int) {
         val alarmIntent = Intent(context, AlarmReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(

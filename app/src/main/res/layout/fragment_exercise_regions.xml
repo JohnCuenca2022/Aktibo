@@ -48,6 +48,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
+                android:visibility="gone"
                 app:layout_constrainedWidth="true"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -82,6 +83,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
+                android:visibility="gone"
                 app:layout_constrainedWidth="true"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -113,10 +115,11 @@
             </FrameLayout>
 
             <FrameLayout
-                android:id="@+id/WholeExerciseButtonFrame"
+                android:id="@+id/wholeExerciseButtonFrame"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
+                android:visibility="gone"
                 app:layout_constrainedWidth="true"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -143,6 +146,76 @@
                     android:textColor="@color/off_white"
                     android:textSize="40sp" />
 
+            </FrameLayout>
+
+            <FrameLayout
+                android:id="@+id/prePostStretchesButtonFrame"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:visibility="gone"
+                app:layout_constrainedWidth="true"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <ImageButton
+                    android:id="@+id/prePostStretchesButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:background="@color/transparent"
+                    android:contentDescription="stretches button"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/pre_post_button" />
+
+                <TextView
+                    android:id="@+id/textViewPrePostStretchesButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|end"
+                    android:layout_marginEnd="10dp"
+                    android:layout_marginTop="36dp"
+                    android:fontFamily="@font/roboto_bold"
+                    android:gravity="center"
+                    android:text="Pre-Post"
+                    android:textColor="@color/primary"
+                    android:textSize="40sp" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:id="@+id/preventionStretchesButtonFrame"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:visibility="gone"
+                app:layout_constrainedWidth="true"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/prePostStretchesButtonFrame">
+
+                <ImageButton
+                    android:id="@+id/preventionStretchesButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="144dp"
+                    android:layout_gravity="center_horizontal"
+                    android:background="@color/transparent"
+                    android:contentDescription="stretches button"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/prevention_button" />
+
+                <TextView
+                    android:id="@+id/textViewPreventionStretchesButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|start"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginTop="48dp"
+                    android:fontFamily="@font/roboto_bold"
+                    android:gravity="center"
+                    android:text="Prevention"
+                    android:textColor="@color/primary"
+                    android:textSize="32sp" />
             </FrameLayout>
 
         </androidx.constraintlayout.widget.ConstraintLayout>

@@ -30,6 +30,19 @@ object AnimationUtil {
         animator.start()
     }
 
+    fun animateRecipeTextViewMacros(textView: TextView, endString: String, startValue: Int, endValue: Int, duration: Long) {
+        val animator = ValueAnimator.ofInt(startValue, endValue)
+        animator.duration = duration
+
+        animator.addUpdateListener { valueAnimator ->
+            val animatedValue = valueAnimator.animatedValue as Int
+            val textViewString = animatedValue.toString() + endString
+            textView.text = textViewString
+        }
+
+        animator.start()
+    }
+
     fun animateProgressBar(progressBar: ProgressBar, startValue: Int, endValue: Int, duration: Long) {
         val animator = ValueAnimator.ofInt(startValue, endValue)
         animator.duration = duration

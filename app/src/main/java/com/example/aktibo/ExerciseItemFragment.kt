@@ -1,8 +1,10 @@
 package com.example.aktibo
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.media.MediaPlayer
 import android.net.Uri
+import android.os.AsyncTask
 import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
@@ -11,6 +13,7 @@ import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -25,6 +28,12 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE
 import com.elyeproj.loaderviewlibrary.LoaderTextView
 import com.example.aktibo.LoginActivity.Companion.TAG
+import com.google.android.exoplayer2.DefaultLoadControl
+import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.PlaybackException
+import com.google.android.exoplayer2.Player
+import com.google.android.exoplayer2.ui.StyledPlayerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.ktx.auth
@@ -49,8 +58,9 @@ class ExerciseItemFragment : Fragment() {
     var exerciseItemList = ArrayList<Map<String, Any>>()
 
     private lateinit var videoURL: String
-    private lateinit var videoView: VideoView
-    private lateinit var mediaPlayer: MediaPlayer
+    lateinit var player: ExoPlayer
+    lateinit var playerView: StyledPlayerView
+    lateinit var progressBar2: ProgressBar
 
     private lateinit var timerTextView: TextView
     private lateinit var buttonExerciseStart: Button
@@ -58,6 +68,8 @@ class ExerciseItemFragment : Fragment() {
     private lateinit var buttonExerciseFinish: Button
     private lateinit var countDownTimer: CountDownTimer
 
+    private lateinit var textViewTitle: TextView
+    private lateinit var textViewTitleLoader: LoaderTextView
     private lateinit var textViewExerciseName: TextView
     private lateinit var textViewExerciseNameLoader: LoaderTextView
     private lateinit var textViewRepSets: TextView
@@ -65,9 +77,14 @@ class ExerciseItemFragment : Fragment() {
     private lateinit var layoutInstructions: LinearLayout
 
     var displayedUI = false
+    var millisUntilFinished = 0L
+    var timerStarted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Keep the screen on while the fragment is active
+        activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         val bundle = arguments
         if (bundle != null) {
@@ -134,7 +151,9 @@ class ExerciseItemFragment : Fragment() {
             }
         }
 
-        videoView = view.findViewById(R.id.videoView)
+        textViewTitle = view.findViewById(R.id.textViewTitle)
+        textViewTitleLoader = view.findViewById(R.id.textViewTitleLoader)
+        textViewTitleLoader.resetLoader()
         textViewExerciseName = view.findViewById(R.id.textViewExerciseName)
         textViewExerciseNameLoader = view.findViewById(R.id.textViewExerciseNameLoader)
         textViewExerciseNameLoader.resetLoader()
@@ -142,7 +161,15 @@ class ExerciseItemFragment : Fragment() {
         textViewRepSetsLoader = view.findViewById(R.id.textViewRepSetsLoader)
         textViewRepSetsLoader.resetLoader()
         layoutInstructions = view.findViewById(R.id.layoutInstructions)
-        mediaPlayer = MediaPlayer()
+
+        player = ExoPlayer.Builder(requireContext()).build()
+        playerView = view.findViewById(R.id.playerView)
+        val loadControl = DefaultLoadControl.Builder()
+            // for retaining previously loaded one hour data in buffer
+            .setBackBuffer(/* backBufferDurationMs= */ 1000 * 60 * 60, true)
+            .build()
+        playerView.player = player
+        progressBar2 = view.findViewById(R.id.progressBar2)
 
         timerTextView = view.findViewById(R.id.timerTextView)
         buttonExerciseStart = view.findViewById(R.id.buttonExerciseStart)
@@ -177,6 +204,9 @@ class ExerciseItemFragment : Fragment() {
     // Function to start the timer
     fun startTimer() {
         // Start the CountDownTimer
+        countDownTimer = createCountDownTimer(millisUntilFinished)
+        val timeString = formatMillisecondsToTimeString(millisUntilFinished)
+        timerTextView.text = timeString
         countDownTimer.start()
     }
 
@@ -195,6 +225,7 @@ class ExerciseItemFragment : Fragment() {
             override fun onTick(millisUntilFinished: Long) {
                 // Update the TextView with the remaining time
                 updateTimer(millisUntilFinished)
+                ::millisUntilFinished.set(millisUntilFinished)
             }
 
             override fun onFinish() {
@@ -211,15 +242,43 @@ class ExerciseItemFragment : Fragment() {
         if (::countDownTimer.isInitialized){
             countDownTimer.cancel()
         }
+
+        if (::player.isInitialized){
+            player.playWhenReady = false
+            player.release()
+        }
     }
 
     override fun onResume() {
         super.onResume()
 
+        if (::countDownTimer.isInitialized){
+            if (timerStarted) {
+                countDownTimer = createCountDownTimer(millisUntilFinished)
+                val timeString = formatMillisecondsToTimeString(millisUntilFinished)
+                timerTextView.text = timeString
+                countDownTimer.start()
+            }
+        }
+
+        if (::videoURL.isInitialized){
+            player = ExoPlayer.Builder(requireContext()).build()
+            playerView.player = player
+            setupVideoView(videoURL)
+        }
+
+
         if (!displayedUI){
             displayedUI = true
             displayData()
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        // Clear the FLAG_KEEP_SCREEN_ON flag when the fragment is destroyed
+        activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
     private fun displayData() = runBlocking{
@@ -231,19 +290,23 @@ class ExerciseItemFragment : Fragment() {
                 if (document != null) {
                     // exercise record button
                     val name = document.getString("name")?: ""
+                    val category = document.getString("category")?: ""
                     val est_time = document.get("est_time").toString()
                     val timeInMills = parseTimeStringToMillis(est_time)
 
                     countDownTimer = createCountDownTimer(timeInMills)
                     val timeString = formatMillisecondsToTimeString(timeInMills)
                     timerTextView.text = timeString
+                    millisUntilFinished = timeInMills
 
                     buttonExerciseStart.setOnClickListener{
                         buttonExerciseStart.visibility = View.GONE
                         buttonExerciseFinish.visibility = View.GONE
                         buttonExerciseCancel.visibility = View.VISIBLE
 
+                        millisUntilFinished = timeInMills
                         startTimer()
+                        timerStarted = true
                     }
 
                     buttonExerciseCancel.setOnClickListener{
@@ -252,7 +315,10 @@ class ExerciseItemFragment : Fragment() {
                         buttonExerciseStart.visibility = View.VISIBLE
 
                         countDownTimer.cancel()
+                        millisUntilFinished = timeInMills
                         timerTextView.text = timeString
+
+                        timerStarted = false
                     }
 
                     buttonExerciseFinish.setOnClickListener{
@@ -262,7 +328,13 @@ class ExerciseItemFragment : Fragment() {
 
                         timerTextView.text = timeString
                         recordExercise(name)
+                        timerStarted = false
                     }
+
+                    // Exercise Category
+                    textViewTitle.text = classifyExercise(category)
+                    textViewTitleLoader.visibility = View.INVISIBLE
+                    textViewTitle.visibility = View.VISIBLE
 
                     // Exercise name/title
                     val exerciseName = document.data?.get("name").toString()
@@ -272,7 +344,7 @@ class ExerciseItemFragment : Fragment() {
 
                     // Instructional video url
                     videoURL = document.data?.get("video").toString()
-                    setupVideoView(videoView, videoURL)
+                    setupVideoView(videoURL)
 
                     // Exercise reps and duration
                     val reps_duration = document.data?.get("reps_duration").toString()
@@ -326,56 +398,118 @@ class ExerciseItemFragment : Fragment() {
 
     }
 
-    private fun setupVideoView(videoView: VideoView, videoUrl: String) {
-
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            // Create a MediaController
-            val mediaController = MediaController(requireContext())
-            mediaController.setAnchorView(videoView)
-
-            // Set the MediaController to the VideoView
-            videoView.setMediaController(mediaController)
-
-            mediaController.addOnUnhandledKeyEventListener { v: View?, event: KeyEvent ->
-                //Handle BACK button
-                if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
-                    mediaController.hide() //Hide mediaController,according to your needs, you can also called here onBackPressed() or finish()
-                }
-                true
-            }
-        } else {
-            val mediaController = (object : MediaController(requireContext()) {
-                override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-                    if (event.keyCode == KeyEvent.KEYCODE_BACK) {
-                        parentFragmentManager.popBackStack()
-                    }
-                    return super.dispatchKeyEvent(event)
-                }
-            })
-
-            mediaController.setAnchorView(videoView)
-            videoView.setMediaController(mediaController)
-        }
-
-        // Set the video URI and start the video
-        val videoUri = Uri.parse(videoUrl)
-        videoView.setVideoURI(videoUri)
-        videoView.start()
-
-        // remove loading animation
-        val videoViewContainer = view?.findViewById<ConstraintLayout>(R.id.videoViewContainer)
-        val viewToRemove = view?.findViewById<ProgressBar>(R.id.progressBar2)
-        if (videoViewContainer != null) {
-            videoViewContainer.removeView(viewToRemove)
+    fun classifyExercise(input: String): String {
+        return when {
+            input.contains("upper", ignoreCase = true) -> "Upper Body Exercises"
+            input.contains("lower", ignoreCase = true) -> "Lower Body Exercises"
+            input.contains("whole", ignoreCase = true) -> "Whole Body Exercises"
+            else -> "Exercise"
         }
     }
+
+    private fun setupVideoView(videoUrl: String) {
+        val mediaItem = MediaItem.fromUri(ensureMp4Extension(videoUrl))
+
+        if (::player.isInitialized) {
+            player.setMediaItem(mediaItem)
+            player.prepare()
+            player.playWhenReady = true
+            progressBar2.visibility = View.GONE
+
+            player.addListener(object: Player.Listener{
+                override fun onPlayerError(error: PlaybackException) {
+                    super.onPlayerError(error)
+
+                    Toast.makeText(requireContext(), "Error playing video.", Toast.LENGTH_SHORT).show()
+                }
+            })
+        }
+    }
+
+    fun ensureMp4Extension(input: String): String {
+        val mp4Extension = ".mp4"
+
+        if (!input.endsWith(mp4Extension, ignoreCase = true)) {
+            // Append ".mp4" to the input string
+            return input + mp4Extension
+        }
+
+        return input
+    }
+
+//    private fun setupVideoView(videoView: VideoView, videoUrl: String) {
+//
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+//            // Create a MediaController
+//            val mediaController = MediaController(requireContext())
+//            mediaController.setAnchorView(videoView)
+//
+//            // Set the MediaController to the VideoView
+//            videoView.setMediaController(mediaController)
+//
+//            mediaController.addOnUnhandledKeyEventListener { v: View?, event: KeyEvent ->
+//                //Handle BACK button
+//                if (event.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
+//                    mediaController.hide() //Hide mediaController,according to your needs, you can also called here onBackPressed() or finish()
+//                }
+//                true
+//            }
+//        } else {
+//            val mediaController = (object : MediaController(requireContext()) {
+//                override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+//                    if (event.keyCode == KeyEvent.KEYCODE_BACK) {
+//                        parentFragmentManager.popBackStack()
+//                    }
+//                    return super.dispatchKeyEvent(event)
+//                }
+//            })
+//
+//            mediaController.setAnchorView(videoView)
+//            videoView.setMediaController(mediaController)
+//        }
+//
+//        // Set the video URI and start the video
+////        val videoUri = Uri.parse(videoUrl)
+////        videoView.setVideoURI(videoUri)
+////        videoView.start()
+//
+//        AsyncTask.execute {
+//            val videoUri = Uri.parse(videoUrl)
+//
+//            // Set the video URI on the main thread
+//            videoView.post {
+//                videoView.setVideoURI(videoUri)
+//                videoView.setOnPreparedListener { mediaPlayer ->
+//                    // Video is prepared, start playing and hide loading animation
+//                    mediaPlayer.start()
+//                    // remove loading animation
+//                    val videoViewContainer = view?.findViewById<ConstraintLayout>(R.id.videoViewContainer)
+//                    val viewToRemove = view?.findViewById<ProgressBar>(R.id.progressBar2)
+//                    if (videoViewContainer != null) {
+//                        videoViewContainer.removeView(viewToRemove)
+//                    }
+//                }
+//                videoView.setOnErrorListener { _, _, _ ->
+//                    // Handle error, e.g., show an error message
+//                    // remove loading animation
+//                    val videoViewContainer = view?.findViewById<ConstraintLayout>(R.id.videoViewContainer)
+//                    val viewToRemove = view?.findViewById<ProgressBar>(R.id.progressBar2)
+//                    if (videoViewContainer != null) {
+//                        videoViewContainer.removeView(viewToRemove)
+//                    }
+//                    true
+//                }
+//            }
+//        }
+//
+//
+//    }
 
     override fun onPause() {
         super.onPause()
         // Release resources when the fragment is paused
-        videoView.stopPlayback()
-        mediaPlayer.release()
+//        videoView.stopPlayback()
+//        mediaPlayer.release()
     }
 
     fun containsOnlyDigits(input: String): Boolean {
@@ -423,7 +557,8 @@ class ExerciseItemFragment : Fragment() {
             val exerciseRecord = mapOf(
                 "date" to Timestamp.now(),
                 "exerciseID" to exerciseID,
-                "exerciseName" to name
+                "exerciseName" to name,
+                "isPartOfRoutine" to isPartOfRoutine
             )
 
             val userRef = db.collection("users").document(uid)

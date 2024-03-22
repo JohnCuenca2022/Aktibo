@@ -22,6 +22,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.view.animation.AnimationUtils
 import android.widget.ImageButton
 import android.widget.TextView
@@ -89,8 +90,18 @@ class HomeFragment : Fragment() {
     private lateinit var textViewWeek: TextView
 
     private lateinit var infoImageButton: ImageButton
+    private var colorInt: Int = 0
 
     var canShowInfoDialog = true
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        colorInt = ContextCompat.getColor(requireContext(), R.color.primary)
+
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -259,7 +270,7 @@ class HomeFragment : Fragment() {
                         val height = document.getDouble("height")?: 1.0
                         showBMI(weight, height)
 
-                        Log.d(TAG, "DocumentSnapshot data: ${document.data}")
+                        //Log.d(TAG, "DocumentSnapshot data: ${document.data}")
                     } else {
                         Log.d(TAG, "No such document")
                     }
@@ -401,6 +412,28 @@ class HomeFragment : Fragment() {
 
             }
 
+            val db = Firebase.firestore
+            val uid = Firebase.auth.currentUser?.uid
+
+            // Define the data you want to update
+            val updateData = mapOf(
+                "totalSteps" to totalSteps,
+            )
+
+            // Update the document with the UID as the document ID
+            if (uid != null) {
+                db.collection("users").document(uid)
+                    .update(updateData)
+                    .addOnSuccessListener {
+                        // Data successfully updated
+                        println("DocumentSnapshot successfully updated!")
+                    }
+                    .addOnFailureListener { e ->
+                        // Handle errors while updating data
+                        println("Error updating document: $e")
+                    }
+            }
+
         }
     }
 
@@ -440,6 +473,28 @@ class HomeFragment : Fragment() {
                         }
                         if (textViewCaloriesCount != null) {
                             AnimationUtil.animateTextViewNumerical(textViewCaloriesCount, 0, totalCaloriesInt, 1000)
+                        }
+
+                        val db = Firebase.firestore
+                        val uid = Firebase.auth.currentUser?.uid
+
+                        // Define the data you want to update
+                        val updateData = mapOf(
+                            "totalCaloriesBurned" to totalCaloriesInt,
+                        )
+
+                        // Update the document with the UID as the document ID
+                        if (uid != null) {
+                            db.collection("users").document(uid)
+                                .update(updateData)
+                                .addOnSuccessListener {
+                                    // Data successfully updated
+                                    println("DocumentSnapshot successfully updated!")
+                                }
+                                .addOnFailureListener { e ->
+                                    // Handle errors while updating data
+                                    println("Error updating document: $e")
+                                }
                         }
 
                     } else {
@@ -565,7 +620,7 @@ class HomeFragment : Fragment() {
 
         val dataSet = BarData(set)
         dataSet.barWidth = 0.9f // set custom bar width
-        dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
+        dataSet.setValueTextColor(colorInt)
 
         // disable dragging/zooming
         barChart.setTouchEnabled(false)
@@ -581,8 +636,8 @@ class HomeFragment : Fragment() {
         yAxisRight.setDrawGridLines(false)
 
         //text color
-        yAxisLeft.textColor = ContextCompat.getColor(requireContext(), R.color.primary)
-        xAxis.textColor = ContextCompat.getColor(requireContext(), R.color.primary)
+        yAxisLeft.textColor = colorInt
+        xAxis.textColor = colorInt
         xAxis.position = XAxis.XAxisPosition.BOTTOM
         yAxisRight.setDrawLabels(false)
 
@@ -612,6 +667,28 @@ class HomeFragment : Fragment() {
         barChart.setFitBars(true)
 
         barChart.invalidate()
+
+        val db = Firebase.firestore
+        val uid = Firebase.auth.currentUser?.uid
+
+        // Define the data you want to update
+        val updateData = mapOf(
+            "dailyStepCounts" to dailyStepCounts,
+        )
+
+        // Update the document with the UID as the document ID
+        if (uid != null) {
+            db.collection("users").document(uid)
+                .update(updateData)
+                .addOnSuccessListener {
+                    // Data successfully updated
+                    println("DocumentSnapshot successfully updated!")
+                }
+                .addOnFailureListener { e ->
+                    // Handle errors while updating data
+                    println("Error updating document: $e")
+                }
+        }
     }
 
     private fun updateWeightChart(document: DocumentSnapshot){
@@ -634,7 +711,7 @@ class HomeFragment : Fragment() {
                 var hasDataPoint = false
                 for (map in weightRecords) {
                     val mapTimestamp = map["date"] as Timestamp
-                    val weight = map["weight"] as Double
+                    val weight = map["weight"].toString().toDouble()
                     val mapDate = sdf.format(mapTimestamp.toDate())
                     if (mapDate == dayString) {
                         dataPoints[i] = weight
@@ -696,7 +773,7 @@ class HomeFragment : Fragment() {
 
         val dataSet = LineData(set)
         //dataSet.barWidth = 0.9f; // set custom bar width
-        dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
+        dataSet.setValueTextColor(colorInt)
 
         // disable dragging/zooming
         lineChart.setTouchEnabled(false)
@@ -712,8 +789,8 @@ class HomeFragment : Fragment() {
         yAxisRight.setDrawGridLines(false)
 
         //text color
-        yAxisLeft.textColor = ContextCompat.getColor(requireContext(), R.color.primary)
-        xAxis.textColor = ContextCompat.getColor(requireContext(), R.color.primary)
+        yAxisLeft.textColor = colorInt
+        xAxis.textColor = colorInt
         xAxis.position = XAxis.XAxisPosition.BOTTOM
         yAxisRight.setDrawLabels(false)
 
@@ -977,7 +1054,7 @@ class HomeFragment : Fragment() {
                                 var hasDataPoint = false
                                 for (map in weightRecords) {
                                     val mapTimestamp = map["date"] as Timestamp
-                                    val weight = map["weight"] as Double
+                                    val weight = map["weight"].toString().toDouble() as Double
                                     val mapDate = sdf.format(mapTimestamp.toDate())
                                     if (mapDate == dayString) {
                                         dataList.add(weight)

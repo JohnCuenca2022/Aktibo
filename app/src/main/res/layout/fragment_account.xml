@@ -22,135 +22,195 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <androidx.cardview.widget.CardView
-        android:id="@+id/cardView"
-        android:layout_width="120dp"
-        android:layout_height="120dp"
-        android:elevation="12dp"
-        app:cardCornerRadius="80dp"
-        android:layout_marginTop="20dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView">
-
-        <ImageView
-            android:id="@+id/userProfileImage"
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:scrollbars="none"
+        app:layout_constraintTop_toBottomOf="@+id/textView"
+        app:layout_constraintBottom_toBottomOf="parent">
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="120dp"
-            android:src="@drawable/placeholder_image"
-            android:scaleType="centerCrop"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent" />
+            android:layout_height="wrap_content">
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
 
-    </androidx.cardview.widget.CardView>
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/cardView"
+                    android:layout_width="120dp"
+                    android:layout_height="120dp"
+                    android:elevation="12dp"
+                    app:cardCornerRadius="80dp"
+                    android:layout_marginTop="20dp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
 
-    <TextView
-        android:id="@+id/username"
-        android:layout_width="300dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:text="Aktibo User"
-        android:gravity="center"
-        android:textSize="16sp"
-        android:textColor="@color/primary"
-        android:fontFamily="@font/roboto_medium"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/cardView" />
+                    <ImageView
+                        android:id="@+id/userProfileImage"
+                        android:layout_width="match_parent"
+                        android:layout_height="120dp"
+                        android:src="@drawable/placeholder_image"
+                        android:scaleType="centerCrop"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/button_editProfile"
-        android:layout_width="300dp"
-        android:layout_height="55dp"
-        android:layout_marginTop="70dp"
-        android:text="Edit Profile"
-        android:textColor="@color/white"
-        app:backgroundTint="@color/green"
-        app:cornerRadius="20dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.498"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/username"
-        app:textAllCaps="false" />
+                </androidx.cardview.widget.CardView>
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/button_twoFA"
-        android:layout_width="300dp"
-        android:layout_height="55dp"
-        android:layout_marginTop="20dp"
-        android:text="Enable Two-Factor Auth"
-        android:textColor="@color/white"
-        app:backgroundTint="@color/green"
-        app:cornerRadius="20dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.498"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/button_editProfile"
-        app:textAllCaps="false" />
+                <TextView
+                    android:id="@+id/username"
+                    android:layout_width="300dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:text="Aktibo User"
+                    android:gravity="center"
+                    android:textSize="16sp"
+                    android:textColor="@color/primary"
+                    android:fontFamily="@font/roboto_medium"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/cardView" />
 
-    <TextView
-        android:id="@+id/textViewSettings"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="40dp"
-        android:fontFamily="@font/roboto_medium"
-        android:text="Food Record Reminders"
-        android:textColor="@color/primary"
-        android:textSize="16sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="@+id/button_twoFA"
-        app:layout_constraintTop_toBottomOf="@+id/button_twoFA" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_editProfile"
+                    android:layout_width="300dp"
+                    android:layout_height="55dp"
+                    android:layout_marginTop="70dp"
+                    android:text="Edit Profile"
+                    android:textColor="@color/white"
+                    app:backgroundTint="@color/green"
+                    app:cornerRadius="20dp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintHorizontal_bias="0.498"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/username"
+                    app:textAllCaps="false" />
 
-    <androidx.appcompat.widget.SwitchCompat
-        android:id="@+id/switchReminders"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/roboto_medium"
-        android:checked="true"
-        app:layout_constraintBottom_toBottomOf="@+id/textViewSettings"
-        app:layout_constraintEnd_toEndOf="@+id/button_twoFA"
-        app:layout_constraintTop_toTopOf="@+id/textViewSettings" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_twoFA"
+                    android:layout_width="300dp"
+                    android:layout_height="55dp"
+                    android:layout_marginTop="20dp"
+                    android:text="Enable Two-Factor Auth"
+                    android:textColor="@color/white"
+                    app:backgroundTint="@color/green"
+                    app:cornerRadius="20dp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintHorizontal_bias="0.498"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/button_editProfile"
+                    app:textAllCaps="false" />
 
-    <TextView
-        android:id="@+id/textViewSettings2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="30dp"
-        android:fontFamily="@font/roboto_medium"
-        android:text="Other Aktibo Notifications"
-        android:textColor="@color/primary"
-        android:textSize="16sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="@+id/textViewSettings"
-        app:layout_constraintTop_toBottomOf="@+id/textViewSettings" />
+                <TextView
+                    android:id="@+id/textViewSettings"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="40dp"
+                    android:fontFamily="@font/roboto_medium"
+                    android:text="Food Record Reminders"
+                    android:textColor="@color/primary"
+                    android:textSize="16sp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintHorizontal_bias="0.0"
+                    app:layout_constraintStart_toStartOf="@+id/button_twoFA"
+                    app:layout_constraintTop_toBottomOf="@+id/button_twoFA" />
 
-    <androidx.appcompat.widget.SwitchCompat
-        android:id="@+id/switchNotifs"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/roboto_medium"
-        android:checked="true"
-        app:layout_constraintBottom_toBottomOf="@+id/textViewSettings2"
-        app:layout_constraintEnd_toEndOf="@+id/button_twoFA"
-        app:layout_constraintTop_toTopOf="@+id/textViewSettings2" />
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchReminders"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/roboto_medium"
+                    android:checked="true"
+                    app:layout_constraintBottom_toBottomOf="@+id/textViewSettings"
+                    app:layout_constraintEnd_toEndOf="@+id/button_twoFA"
+                    app:layout_constraintTop_toTopOf="@+id/textViewSettings" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/button_logout"
-        android:layout_width="300dp"
-        android:layout_height="55dp"
-        android:layout_marginBottom="40dp"
-        android:text="Logout"
-        app:cornerRadius="20dp"
-        app:strokeWidth="1dp"
-        android:textColor="@color/primary"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.498"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        style="@style/CustomMaterialButton"
-        app:textAllCaps="false" />
+                <TextView
+                    android:id="@+id/textViewSettings2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="30dp"
+                    android:fontFamily="@font/roboto_medium"
+                    android:text="Other Aktibo Notifications"
+                    android:textColor="@color/primary"
+                    android:textSize="16sp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintHorizontal_bias="0.0"
+                    app:layout_constraintStart_toStartOf="@+id/textViewSettings"
+                    app:layout_constraintTop_toBottomOf="@+id/textViewSettings" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchNotifs"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/roboto_medium"
+                    android:checked="true"
+                    app:layout_constraintBottom_toBottomOf="@+id/textViewSettings2"
+                    app:layout_constraintEnd_toEndOf="@+id/button_twoFA"
+                    app:layout_constraintTop_toTopOf="@+id/textViewSettings2" />
+
+                <TextView
+                    android:id="@+id/textViewSettings3"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="30dp"
+                    android:fontFamily="@font/roboto_medium"
+                    android:text="App Theme (Dark Mode)"
+                    android:textColor="@color/primary"
+                    android:textSize="16sp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintHorizontal_bias="0.0"
+                    app:layout_constraintStart_toStartOf="@+id/textViewSettings2"
+                    app:layout_constraintTop_toBottomOf="@+id/textViewSettings2" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switchTheme"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/roboto_medium"
+                    android:checked="true"
+                    app:layout_constraintBottom_toBottomOf="@+id/textViewSettings3"
+                    app:layout_constraintEnd_toEndOf="@+id/button_twoFA"
+                    app:layout_constraintTop_toTopOf="@+id/textViewSettings3" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_credits"
+                    android:layout_width="300dp"
+                    android:layout_height="55dp"
+                    android:layout_marginTop="40dp"
+                    android:text="Credits"
+                    android:textColor="@color/white"
+                    app:backgroundTint="@color/green"
+                    app:cornerRadius="20dp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintHorizontal_bias="0.498"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/textViewSettings3"
+                    app:textAllCaps="false" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_logout"
+                    android:layout_width="300dp"
+                    android:layout_height="55dp"
+                    android:layout_marginBottom="40dp"
+                    android:text="Logout"
+                    app:cornerRadius="20dp"
+                    app:strokeWidth="1dp"
+                    android:textColor="@color/primary"
+                    android:layout_marginTop="60dp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintHorizontal_bias="0.498"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/button_credits"
+                    style="@style/CustomMaterialButton"
+                    app:textAllCaps="false" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </LinearLayout>
+    </ScrollView>
+
+
+
 
 
 

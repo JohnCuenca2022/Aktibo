@@ -29,6 +29,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.KeyEventDispatcher.dispatchKeyEvent
 import com.example.aktibo.LoginActivity.Companion.TAG
 import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
@@ -634,6 +635,15 @@ class NewMomentFragment : Fragment() {
         CoroutineScope(IO).launch{
             // scan caption for profanity if there is a caption
             if (text != "") {
+                if (text.length > 500) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(requireContext(), "Caption character limit exceeded.", Toast.LENGTH_SHORT).show()
+                        enableButton(createNewMomentButton)
+                        enableAllInputs()
+                    }
+                    return@launch
+                }
+
                 val isSafeEnglish = async {
                     checkProfanity(text, "en", apiUser, apiSecret)
                 }.await()

@@ -25,5 +25,11 @@ day for males kcals in a week. \n\nThese weekly goals may vary for each individu
     <string name="cancel">Cancel</string>
     <string name="reportPopUpTitle">Reason:</string>
     <string name="submit">Submit</string>
+    <string name="CreditsText1">We would like to express our gratitude to</string>
+    <string name="CreditsText2">for his enthusiastic participation and \nmassive contribution to our video demonstrations.</string>
+    <string name="CreditsText3">our technical adviser, for his effective guidance,\nvaluable suggestions, and dedication to\nhelping us accomplish our goals.</string>
+    <string name="CreditsText4">To the testers who have provided insightful\nfeedback that can be used for the\nbetterment of this project.</string>
+    <string name="CreditsText5">And to the family, friends, and acquaintances\nwho have provided generous support\nand approval in reaching our goals.</string>
+    <string name="CreditsText6">FreeImages.com · Unsplash.com · Pexels.com\nIStockPhoto.com · ShutterStock.com\nGettyImages.com · Dreamstime.com\nAdobeStock · Freepik.com</string>
 
 </resources>

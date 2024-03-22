@@ -42,6 +42,7 @@ class NewUser1Fragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_new_user1, container, false)
 
         heightImperialTextView = view.findViewById(R.id.heightImperialTextView)
+        heightImperialTextView.text = "${Math.floorDiv(heightInInches, 12)}\'${heightInInches%12}\""
 
         heightImperialTextView.setOnClickListener {
             showHeightSelectionDialog()

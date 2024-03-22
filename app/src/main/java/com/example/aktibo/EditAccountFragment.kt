@@ -17,9 +17,15 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.NumberPicker
 import android.widget.ProgressBar
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -28,6 +34,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.aktibo.LoginActivity.Companion.TAG
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -69,6 +76,17 @@ class EditAccountFragment : Fragment() {
     private lateinit var textWarningCardView: CardView
     private lateinit var textWarningTextView: TextView
 
+    private lateinit var heightImperialTextView: TextView
+
+    private var current_selected_feet = 0
+    private var current_selected_inches = 0
+    private var heightInCm = 0.0
+    private var heightInInches = 48
+    private var weightInKg = 0.0
+    private var weightInLbs = 0.0
+
+    private var canShowHeightDialog = true
+
     private lateinit var saveButtonProgressBar: ProgressBar
 
     val workflow = "wfl_f5yBhhGuUn9BpIyZwaJMZ"
@@ -87,6 +105,8 @@ class EditAccountFragment : Fragment() {
         if (args != null) {
             val username = args.getString("username")
             val imageURL = args.getString("imageURL")
+            val userHeight = args.getDouble("userHeight")
+            val userWeight = args.getDouble("userWeight")
 
             usernameInput = view.findViewById(R.id.username)
             imageView = view.findViewById(R.id.userProfileImage)
@@ -100,6 +120,11 @@ class EditAccountFragment : Fragment() {
                     .placeholder(R.drawable.placeholder_image) // Optional placeholder image
                     .into(imageView)
             }
+
+            heightInCm = userHeight
+            heightInInches = (userHeight / 2.54).toInt()
+            weightInKg = userWeight
+            weightInLbs = userWeight * 2.205
         }
 
         //change user profile image
@@ -108,7 +133,86 @@ class EditAccountFragment : Fragment() {
             selectImage(view)
         }
 
-        //change username
+        heightImperialTextView = view.findViewById(R.id.heightImperialTextView)
+
+        heightImperialTextView.setOnClickListener {
+            showHeightSelectionDialog()
+        }
+
+        val weightSpinner: Spinner = view.findViewById(R.id.weightSpinner)
+        context?.let {
+            ArrayAdapter.createFromResource(
+                it,
+                R.array.weight_array,
+                R.layout.custom_spinner_item
+            ).also { adapter ->
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                weightSpinner.adapter = adapter
+            }
+        }
+
+        val weightEditText = view.findViewById<EditText>(R.id.weightEditText)
+        weightEditText.setText(roundToTwoDecimalPlaces(weightInKg))
+        weightSpinner.setOnItemSelectedListener(object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+
+                val selectedItem = parent?.getItemAtPosition(position).toString()
+                if (selectedItem == "kg") {
+                    weightEditText.setText(roundToTwoDecimalPlaces(weightInKg))
+                } else if (selectedItem == "lbs") {
+                    weightEditText.setText(roundToTwoDecimalPlaces(weightInLbs))
+                }
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                // Handle the case where nothing is selected if needed
+            }
+        })
+
+
+        val heightSpinner: Spinner = view.findViewById(R.id.heightSpinner)
+        context?.let {
+            ArrayAdapter.createFromResource(
+                it,
+                R.array.height_array,
+                R.layout.custom_spinner_item
+            ).also { adapter ->
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                heightSpinner.adapter = adapter
+            }
+        }
+
+        val heightEditText = view.findViewById<EditText>(R.id.heightEditText)
+        heightEditText.setText(roundToTwoDecimalPlaces(heightInCm))
+        val heightImperialLayout = view.findViewById<LinearLayout>(R.id.heightImperialLayout)
+
+
+        heightSpinner.setOnItemSelectedListener(object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+
+                val selectedItem = parent?.getItemAtPosition(position).toString()
+                if (selectedItem == "in") {
+                    heightEditText.visibility = View.GONE
+                    val feet_array = arrayOf("4'", "5'", "6'", "7'", "8'")
+                    val inches_array = arrayOf("0\"", "1\"", "2\"", "3\"", "4\"", "5\"", "6\"", "7\"", "8\"", "9\"", "10\"", "11\"")
+                    current_selected_feet = feet_array.indexOf("${Math.floorDiv(heightInInches, 12)}'")
+                    current_selected_inches = inches_array.indexOf("${heightInInches%12}\"")
+                    heightImperialTextView.text = "${Math.floorDiv(heightInInches, 12)}\'${heightInInches%12}\""
+                    heightImperialLayout.visibility = View.VISIBLE
+                } else if (selectedItem == "cm") {
+                    heightImperialLayout.visibility = View.GONE
+                    heightEditText.setText(roundToTwoDecimalPlaces(heightInCm))
+                    heightEditText.visibility = View.VISIBLE
+                }
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                // Handle the case where nothing is selected if needed
+            }
+        })
+
+
+        //change username and user details
         saveButtonProgressBar = view.findViewById(R.id.saveButtonProgressBar)
 
         val button_save = view.findViewById<Button>(R.id.button_save)
@@ -117,121 +221,241 @@ class EditAccountFragment : Fragment() {
             disableAllInputs()
             disableButton(button_save)
 
-            val newUsername = usernameInput.text.toString().trim()
-
-            val currentUser = FirebaseAuth.getInstance().currentUser
-            val db = Firebase.firestore
-            val userRef = currentUser?.let { it1 -> db.collection("users").document(it1.uid) }
-
-            if (userRef != null) {
-                if (newUsername.length < 3){
-                    Toast.makeText(context, "New username must have at least 3 characters", Toast.LENGTH_SHORT).show()
-
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Update Profile")
+                .setMessage("Are you sure you want to update your profile?")
+                .setNeutralButton(resources.getString(R.string.cancel)) { dialog, which ->
                     enableButton(button_save)
                     enableAllInputs()
-                } else {
-                    userRef.get()
-                        .addOnSuccessListener { documentSnapshot ->
-                            if (documentSnapshot.exists()) {
-                                // Document exists, you can access its data
-                                val username = documentSnapshot.getString("username")
-                                if (username == newUsername){
-                                    Toast.makeText(requireContext(), "New username is the same as old username", Toast.LENGTH_SHORT).show()
+                }
+                .setPositiveButton("Update") { dialog, which ->
+                    val newUsername = usernameInput.text.toString().trim()
 
-                                    enableButton(button_save)
-                                    enableAllInputs()
+                    val currentUser = FirebaseAuth.getInstance().currentUser
+                    val db = Firebase.firestore
+                    val userRef = currentUser?.let { it1 -> db.collection("users").document(it1.uid) }
 
-                                    return@addOnSuccessListener
-                                }
+                    if (userRef != null) {
+                        if (newUsername.length < 3){
+                            Toast.makeText(context, "New username must have at least 3 characters", Toast.LENGTH_SHORT).show()
 
-                                var lastChangedUsername = documentSnapshot.get("lastChangedUsername")
-                                if (lastChangedUsername == null){
-                                    val currentDate = Calendar.getInstance()
-                                    val oneYearAgo = Calendar.getInstance()
-                                    oneYearAgo.add(Calendar.YEAR, -1)
-                                    lastChangedUsername = Timestamp(oneYearAgo.time)
-                                }
-                                lastChangedUsername = lastChangedUsername as Timestamp
-                                val lastChangedUsernameDate = lastChangedUsername.toDate()
-
-                                val currentDate = Calendar.getInstance().time
-
-                                val calendar = Calendar.getInstance()
-                                calendar.time = currentDate
-                                calendar.add(Calendar.MONTH, -1) // Subtract one month
-
-                                if (lastChangedUsernameDate.after(calendar.time)){ // date is less than a month ago
-                                    Toast.makeText(requireContext(), "Username can only be changed once every 30 days.", Toast.LENGTH_SHORT).show()
-
-                                    enableButton(button_save)
-                                    enableAllInputs()
-
-                                    return@addOnSuccessListener
-                                } else {
-                                    CoroutineScope(IO).launch{
-
-                                        val isSafeEnglish = async {
-                                            checkProfanity(newUsername, "en", apiUser, apiSecret)
-                                        }.await()
-
-                                        if (!isSafeEnglish){ // stop if has profanity in English or an error happened
-                                            withContext(Dispatchers.Main) {
-                                                enableButton(button_save)
-                                                enableAllInputs()
-                                            }
-                                            return@launch
-                                        }
-
-                                        val isSafeFilipino = async {
-                                            checkProfanity(newUsername, "tl", apiUser, apiSecret)
-                                        }.await()
-
-                                        if (!isSafeFilipino){ // stop if has profanity in Tagalog/Filipino or an error happened
-                                            withContext(Dispatchers.Main) {
-                                                enableButton(button_save)
-                                                enableAllInputs()
-                                            }
-                                            return@launch
-                                        }
-
-                                        userRef
-                                            .update(
-                                                "username", newUsername,
-                                                "lastChangedUsername", Timestamp.now()
-                                            )
-                                            .addOnSuccessListener {
-                                                Toast.makeText(context, "Profile Updated", Toast.LENGTH_SHORT).show()
-                                                enableButton(button_save)
-                                                enableAllInputs()
-                                                val fragmentManager = getParentFragmentManager()
-                                                fragmentManager.popBackStack()
-                                            }
-                                            .addOnFailureListener { e -> Log.w(TAG, "Error updating document", e) }
-                                    }
-                                }
-
-                            } else {
-                                println("Document does not exist")
-                                enableButton(button_save)
-                                enableAllInputs()
-                            }
-                        }
-                        .addOnFailureListener { exception ->
-                            // Handle failures
-                            println("Error getting document: $exception")
                             enableButton(button_save)
                             enableAllInputs()
+                        } else {
+                            userRef.get()
+                                .addOnSuccessListener { documentSnapshot ->
+                                    if (documentSnapshot.exists()) {
+                                        // Document exists, you can access its data
+                                        val username = documentSnapshot.getString("username")
+                                        if (username != newUsername){
+                                            var lastChangedUsername = documentSnapshot.get("lastChangedUsername")
+                                            if (lastChangedUsername == null){
+                                                val currentDate = Calendar.getInstance()
+                                                val oneYearAgo = Calendar.getInstance()
+                                                oneYearAgo.add(Calendar.YEAR, -1)
+                                                lastChangedUsername = Timestamp(oneYearAgo.time)
+                                            }
+                                            lastChangedUsername = lastChangedUsername as Timestamp
+                                            val lastChangedUsernameDate = lastChangedUsername.toDate()
+
+                                            val currentDate = Calendar.getInstance().time
+
+                                            val calendar = Calendar.getInstance()
+                                            calendar.time = currentDate
+                                            calendar.add(Calendar.MONTH, -1) // Subtract one month
+
+                                            if (lastChangedUsernameDate.after(calendar.time)){ // date is less than a month ago
+                                                Toast.makeText(requireContext(), "Username can only be changed once every 30 days.", Toast.LENGTH_SHORT).show()
+
+                                                enableButton(button_save)
+                                                enableAllInputs()
+
+                                                return@addOnSuccessListener
+                                            } else {
+                                                CoroutineScope(IO).launch{
+
+                                                    val isSafeEnglish = async {
+                                                        checkProfanity(newUsername, "en", apiUser, apiSecret)
+                                                    }.await()
+
+                                                    if (!isSafeEnglish){ // stop if has profanity in English or an error happened
+                                                        withContext(Dispatchers.Main) {
+                                                            enableButton(button_save)
+                                                            enableAllInputs()
+                                                        }
+                                                        return@launch
+                                                    }
+
+                                                    val isSafeFilipino = async {
+                                                        checkProfanity(newUsername, "tl", apiUser, apiSecret)
+                                                    }.await()
+
+                                                    if (!isSafeFilipino){ // stop if has profanity in Tagalog/Filipino or an error happened
+                                                        withContext(Dispatchers.Main) {
+                                                            enableButton(button_save)
+                                                            enableAllInputs()
+                                                        }
+                                                        return@launch
+                                                    }
+
+                                                    var heightEditText: String = view.findViewById<EditText>(R.id.heightEditText).text.toString()
+                                                    val heightSpinnerSelected: String = heightSpinner.selectedItem.toString() // cm or in
+                                                    if (heightSpinnerSelected == "cm" && heightEditText == "") {
+                                                        Toast.makeText(context, "Please input your height", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                    else if (heightSpinnerSelected == "cm" && heightEditText.toFloat() <= 100) {
+                                                        Toast.makeText(context, "Height must be greater than 100 cm", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                    else {
+                                                        if (heightSpinnerSelected == "in") {
+                                                            var height = heightInInches.toDouble()
+                                                            height *= 2.54 // convert in to cm
+                                                            heightEditText = height.toString()
+                                                        }
+                                                        userRef.update(
+                                                            "username", newUsername,
+                                                            "height", heightEditText.toDouble(),
+                                                            "lastChangedUsername", Timestamp.now()
+                                                        )
+                                                            .addOnSuccessListener {
+                                                                Toast.makeText(context, "Profile Updated", Toast.LENGTH_SHORT).show()
+                                                                enableButton(button_save)
+                                                                enableAllInputs()
+                                                                val fragmentManager = getParentFragmentManager()
+                                                                fragmentManager.popBackStack()
+                                                            }
+                                                            .addOnFailureListener { e -> Log.w(TAG, "Error updating document", e) }
+                                                    }
+
+
+                                                }
+                                            }
+                                        } else {
+                                            var heightEditText: String = view.findViewById<EditText>(R.id.heightEditText).text.toString()
+                                            val heightSpinnerSelected: String = heightSpinner.selectedItem.toString() // cm or in
+                                            if (heightSpinnerSelected == "cm" && heightEditText == "") {
+                                                Toast.makeText(context, "Please input your height", Toast.LENGTH_SHORT).show()
+                                            }
+                                            else if (heightSpinnerSelected == "cm" && heightEditText.toFloat() <= 100) {
+                                                Toast.makeText(context, "Height must be greater than 100 cm", Toast.LENGTH_SHORT).show()
+                                            }
+                                            else {
+                                                if (heightSpinnerSelected == "in") {
+                                                    var height = heightInInches.toDouble()
+                                                    height *= 2.54 // convert in to cm
+                                                    heightEditText = height.toString()
+                                                }
+                                                userRef.update(
+                                                    "height", heightEditText.toDouble(),
+                                                )
+                                                    .addOnSuccessListener {
+                                                        Toast.makeText(context, "Profile Updated", Toast.LENGTH_SHORT).show()
+                                                        enableButton(button_save)
+                                                        enableAllInputs()
+                                                        val fragmentManager = getParentFragmentManager()
+                                                        fragmentManager.popBackStack()
+                                                    }
+                                                    .addOnFailureListener { e -> Log.w(TAG, "Error updating document", e) }
+                                            }
+                                        }
+
+
+                                    } else {
+                                        println("Document does not exist")
+                                        enableButton(button_save)
+                                        enableAllInputs()
+                                    }
+                                }
+                                .addOnFailureListener { exception ->
+                                    // Handle failures
+                                    println("Error getting document: $exception")
+                                    enableButton(button_save)
+                                    enableAllInputs()
+                                }
+
                         }
-
+                    }
                 }
-            }
-
+                .setOnDismissListener {
+                    enableButton(button_save)
+                    enableAllInputs()
+                }
+                .setOnCancelListener {
+                    enableButton(button_save)
+                    enableAllInputs()
+                }
+                .show()
         }
 
         textWarningCardView = view.findViewById(R.id.textWarningCardView)
         textWarningTextView = view.findViewById(R.id.textWarningTextView)
 
         return view
+    }
+
+    private fun showHeightSelectionDialog(){
+        if (!canShowHeightDialog){
+            return
+        }
+
+        canShowHeightDialog = false
+
+        val customLayout = layoutInflater.inflate(R.layout.height_imperial_dialog_layout, null)
+        val number_picker_feet = customLayout.findViewById<NumberPicker>(R.id.number_picker_feet)
+        val feet_array = arrayOf("4'", "5'", "6'", "7'", "8'")
+        number_picker_feet.minValue = 0
+        number_picker_feet.maxValue = feet_array.size - 1
+        number_picker_feet.displayedValues = feet_array
+        number_picker_feet.value = current_selected_feet
+        number_picker_feet.wrapSelectorWheel = false
+
+        val number_picker_inches = customLayout.findViewById<NumberPicker>(R.id.number_picker_inches)
+        val inches_array = arrayOf("0\"", "1\"", "2\"", "3\"", "4\"", "5\"", "6\"", "7\"", "8\"", "9\"", "10\"", "11\"")
+        number_picker_inches.minValue = 0
+        number_picker_inches.maxValue = inches_array.size - 1
+        number_picker_inches.displayedValues = inches_array
+        number_picker_inches.value = current_selected_inches
+        number_picker_inches.wrapSelectorWheel = false
+
+        val builder = MaterialAlertDialogBuilder(requireContext())
+            .setView(customLayout)
+            .setTitle("Select a Height")
+            .setPositiveButton("OK") { _, _ ->
+                val selectedFeet = feet_array[number_picker_feet.value]
+                current_selected_feet = number_picker_feet.value
+                val selectedInches = inches_array[number_picker_inches.value]
+                current_selected_inches = number_picker_inches.value
+                val selectedHeightText = "${selectedFeet}${selectedInches}"
+                heightImperialTextView.text = selectedHeightText
+                heightInInches = (extractIntFromString(selectedFeet)?.times(12) ?: 0) + (extractIntFromString(selectedInches)?: 0)
+
+                canShowHeightDialog = true
+            }
+            .setNegativeButton("Cancel") { _, _ ->
+                canShowHeightDialog = true
+            }
+            .setOnCancelListener{
+                canShowHeightDialog = true
+            }
+            .setOnDismissListener{
+                canShowHeightDialog = true
+            }
+        builder.show()
+    }
+
+    fun extractIntFromString(input: String): Int? {
+        val regex = Regex("\\d+")
+        val matchResult = regex.find(input)
+
+        return matchResult?.value?.toIntOrNull()
+    }
+
+    fun roundToTwoDecimalPlaces(number: Double): String {
+        return if (number % 1 == 0.0) {
+            String.format("%.1f", number)
+        } else {
+            String.format("%.2f", number)
+        }
     }
 
     suspend fun analyzeImage(context: Context, imageUri: Uri, workflow: String, apiUser: String, apiSecret: String): Boolean {

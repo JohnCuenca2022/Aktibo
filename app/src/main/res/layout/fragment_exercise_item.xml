@@ -6,6 +6,24 @@
     android:layout_height="match_parent"
     tools:context=".ExerciseItemFragment">
 
+    <com.elyeproj.loaderviewlibrary.LoaderTextView
+        android:id="@+id/textViewTitleLoader"
+        android:layout_width="wrap_content"
+        android:minWidth="160dp"
+        android:layout_height="30dp"
+        android:layout_marginTop="20dp"
+        android:alpha="0.7"
+        android:fontFamily="@font/roboto_bold"
+        android:gravity="center"
+        android:text="Upper Body Exercises"
+        android:textColor="@color/primary"
+        android:textSize="15sp"
+        app:width_weight="1"
+        app:height_weight="1"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <TextView
         android:id="@+id/textViewTitle"
         android:layout_width="match_parent"
@@ -14,7 +32,8 @@
         android:alpha="0.7"
         android:fontFamily="@font/roboto_bold"
         android:gravity="center"
-        android:text="Upper Body Exercise"
+        android:text=""
+        android:visibility="invisible"
         android:textColor="@color/primary"
         android:textSize="15sp"
         app:layout_constraintEnd_toEndOf="parent"
@@ -112,8 +131,9 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textViewExerciseName">
-        <VideoView
-            android:id="@+id/videoView"
+
+        <com.google.android.exoplayer2.ui.StyledPlayerView
+            android:id="@+id/playerView"
             android:layout_width="match_parent"
             android:layout_height="200dp"
             app:layout_constraintEnd_toEndOf="parent"
@@ -127,8 +147,8 @@
             android:layout_height="80dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="@+id/videoView"
-            app:layout_constraintTop_toTopOf="@+id/videoView" />
+            app:layout_constraintStart_toStartOf="@+id/playerView"
+            app:layout_constraintTop_toTopOf="@+id/playerView" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout

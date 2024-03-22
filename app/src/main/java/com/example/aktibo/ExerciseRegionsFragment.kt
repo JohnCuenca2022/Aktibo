@@ -5,6 +5,7 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.ImageButton
 
 class ExerciseRegionsFragment : Fragment() {
@@ -30,19 +31,49 @@ class ExerciseRegionsFragment : Fragment() {
         // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_exercise_regions, container, false)
 
-        val lightExerciseButton = view.findViewById<ImageButton>(R.id.upperExerciseButton)
-        lightExerciseButton.setOnClickListener{
-            replaceFragmentWithAnimWithData(ExerciseListFragment(), "upper")
-        }
 
-        val moderateExerciseButton = view.findViewById<ImageButton>(R.id.lowerExerciseButton)
-        moderateExerciseButton.setOnClickListener{
-            replaceFragmentWithAnimWithData(ExerciseListFragment(), "lower")
-        }
+        val upperExerciseButtonFrame = view.findViewById<FrameLayout>(R.id.upperExerciseButtonFrame)
+        val lowerExerciseButtonFrame = view.findViewById<FrameLayout>(R.id.lowerExerciseButtonFrame)
+        val wholeExerciseButtonFrame = view.findViewById<FrameLayout>(R.id.wholeExerciseButtonFrame)
 
-        val vigorousExerciseButton = view.findViewById<ImageButton>(R.id.wholeExerciseButton)
-        vigorousExerciseButton.setOnClickListener{
-            replaceFragmentWithAnimWithData(ExerciseListFragment(), "whole")
+        val prePostStretchesButtonFrame = view.findViewById<FrameLayout>(R.id.prePostStretchesButtonFrame)
+        val preventionStretchesButtonFrame = view.findViewById<FrameLayout>(R.id.preventionStretchesButtonFrame)
+
+        if (intensity == "stretching"){
+            val prePostStretchesButton = view.findViewById<ImageButton>(R.id.prePostStretchesButton)
+            prePostStretchesButton.setOnClickListener{
+                replaceFragmentWithAnimWithData(ExerciseListFragment(), "pre-post")
+            }
+            val preventionStretchesButton = view.findViewById<ImageButton>(R.id.preventionStretchesButton)
+            preventionStretchesButton.setOnClickListener{
+                replaceFragmentWithAnimWithData(ExerciseListFragment(), "prevention")
+            }
+            upperExerciseButtonFrame.visibility = View.GONE
+            lowerExerciseButtonFrame.visibility = View.GONE
+            wholeExerciseButtonFrame.visibility = View.GONE
+            prePostStretchesButtonFrame.visibility = View.VISIBLE
+            preventionStretchesButtonFrame.visibility = View.VISIBLE
+
+        } else {
+            val upperExerciseButton = view.findViewById<ImageButton>(R.id.upperExerciseButton)
+            upperExerciseButton.setOnClickListener{
+                replaceFragmentWithAnimWithData(ExerciseListFragment(), "upper")
+            }
+
+            val lowerExerciseButton = view.findViewById<ImageButton>(R.id.lowerExerciseButton)
+            lowerExerciseButton.setOnClickListener{
+                replaceFragmentWithAnimWithData(ExerciseListFragment(), "lower")
+            }
+
+            val wholeExerciseButton = view.findViewById<ImageButton>(R.id.wholeExerciseButton)
+            wholeExerciseButton.setOnClickListener{
+                replaceFragmentWithAnimWithData(ExerciseListFragment(), "whole")
+            }
+            prePostStretchesButtonFrame.visibility = View.GONE
+            preventionStretchesButtonFrame.visibility = View.GONE
+            upperExerciseButtonFrame.visibility = View.VISIBLE
+            lowerExerciseButtonFrame.visibility = View.VISIBLE
+            wholeExerciseButtonFrame.visibility = View.VISIBLE
         }
 
         return view

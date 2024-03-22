@@ -14,6 +14,7 @@ import android.os.Looper
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.fragment.app.Fragment
@@ -63,6 +64,19 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val helper = MyHelperFunctions()
+        val NightModeInt = helper.getPreferenceInt("NightModeInt", this)
+
+        if (NightModeInt == 1) {
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+        } else {
+            AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+        }
+
+//        val sharedPreferences = getSharedPreferences("SharedPrefs", MODE_PRIVATE)
+//        val NightMode = sharedPreferences.getInt("NightModeInt", 1);
+//        AppCompatDelegate.setDefaultNightMode(NightMode)
 
         bottomNavigation = findViewById(R.id.bottom_navigation)
         bottomNavigation.setOnItemSelectedListener { menuItem ->

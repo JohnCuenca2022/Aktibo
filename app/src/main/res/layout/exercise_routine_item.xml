@@ -54,8 +54,7 @@
                 <TextView
                     android:id="@+id/exerciseInfo"
                     android:layout_width="match_parent"
-                    android:layout_height="0dp"
-                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
                     android:fontFamily="@font/roboto"
                     android:paddingTop="2dp"
                     android:paddingBottom="2dp"
@@ -63,6 +62,10 @@
                     android:paddingEnd="14dp"
                     android:text="Push-Ups\nPush-Ups\nPush-Ups\nPush-Ups\nPush-Ups\n"
                     android:textColor="@color/primary"
+                    android:autoSizeTextType="uniform"
+                    app:autoSizeMinTextSize="9sp"
+                    app:autoSizeMaxTextSize="11sp"
+                    app:autoSizeStepGranularity="1sp"
                     app:layout_constraintTop_toTopOf="parent" />
 
             </LinearLayout>

@@ -2,6 +2,9 @@ package com.example.aktibo
 
 import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.style.ForegroundColorSpan
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -17,6 +20,7 @@ import android.widget.TableLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.view.ViewCompat
 import com.google.android.material.datepicker.CalendarConstraints
@@ -57,6 +61,20 @@ class ExerciseGoalFragment : Fragment() {
         // load press animations
         val fadeIn = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_in)
         val fadeOut = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_out)
+
+        val textViewExerciseRecordsInfo = view.findViewById<TextView>(R.id.textViewExerciseRecordsInfo)
+        val fullText = "Perform exercise routines to create new records. Exercises marked with green are a part of a routine."
+        val wordToColor = "green"
+        val spannableString = SpannableString(fullText)
+
+        val startIndex = fullText.indexOf(wordToColor)
+        val endIndex = startIndex + wordToColor.length
+
+        val colorResourceId = R.color.green
+        val color = context?.let { ContextCompat.getColor(it, colorResourceId) }
+        spannableString.setSpan(color?.let { ForegroundColorSpan(it) }, startIndex, endIndex, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+
+        textViewExerciseRecordsInfo.text = spannableString
 
         exerciseGoalButton = view.findViewById(R.id.exerciseGoalButton)
         exerciseGoalButton.setOnClickListener {
@@ -122,6 +140,7 @@ class ExerciseGoalFragment : Fragment() {
                             val date = record["date"] as Timestamp
                             val exerciseID = record["exerciseID"] as String
                             val exerciseName = record["exerciseName"] as? String ?: ""
+                            val isPartOfRoutine = record["isPartOfRoutine"] as? Boolean ?: false
 
                             val dateString = formatDateToString(date.toDate())
 
@@ -131,7 +150,16 @@ class ExerciseGoalFragment : Fragment() {
                             val exerciseRecordName: TextView = tableRow.findViewById(R.id.exerciseRecordName)
 
                             exerciseRecordDate.text = dateString
-                            exerciseRecordName.text = exerciseName
+
+                            if (isPartOfRoutine) {
+                                val spannableString = SpannableString(exerciseName)
+                                val colorResourceId = R.color.green
+                                val color = context?.let { ContextCompat.getColor(it, colorResourceId) }
+                                spannableString.setSpan(color?.let { ForegroundColorSpan(it) }, 0, spannableString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                                exerciseRecordName.text = spannableString
+                            } else {
+                                exerciseRecordName.text = exerciseName
+                            }
 
                             tableLayout.addView(tableRow)
                         }

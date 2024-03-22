@@ -27,7 +27,7 @@
                 android:id="@+id/routineSpinner"
                 android:layout_width="180dp"
                 android:layout_height="50dp"
-                android:backgroundTint="@color/off_white"
+                android:backgroundTint="@color/green"
                 style="@style/mySpinnerItemStyle"/>
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>

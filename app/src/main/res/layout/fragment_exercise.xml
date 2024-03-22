@@ -212,7 +212,7 @@
                 </FrameLayout>
 
                 <FrameLayout
-                    android:id="@+id/lightExerciseButtonFrame"
+                    android:id="@+id/stretchesExerciseButtonFrame"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
@@ -220,6 +220,66 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/exerciseRoutinesButtonFrame">
+
+                    <ImageButton
+                        android:id="@+id/stretchesExerciseButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_horizontal"
+                        android:background="@color/transparent"
+                        android:contentDescription="meal recipes button"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/stretches_exercise_button" />
+
+                    <TextView
+                        android:id="@+id/textViewStretchesExerciseButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="top|start"
+                        android:layout_marginStart="28dp"
+                        android:layout_marginTop="6dp"
+                        android:fontFamily="@font/roboto_bold"
+                        android:gravity="center"
+                        android:text="Stretches"
+                        android:textColor="@color/primary"
+                        android:textSize="30sp" />
+
+                    <TextView
+                        android:id="@+id/textViewDescStretchesExerciseButton"
+                        android:layout_width="160dp"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="top|start"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginTop="54dp"
+                        android:fontFamily="@font/roboto"
+                        android:gravity="start"
+                        android:text="Improve your flexibility and range of motion"
+                        android:textColor="@color/primary"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/textViewTimeStretchesExerciseButton"
+                        android:layout_width="175dp"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="top|start"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginTop="104dp"
+                        android:fontFamily="@font/roboto_italic"
+                        android:gravity="start"
+                        android:text="Simple and effective"
+                        android:textColor="@color/primary"
+                        android:textSize="14sp" />
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/lightExerciseButtonFrame"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    app:layout_constrainedWidth="true"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@+id/stretchesExerciseButtonFrame">
 
                     <ImageButton
                         android:id="@+id/lightExerciseButton"
@@ -266,7 +326,7 @@
                         android:layout_marginTop="104dp"
                         android:fontFamily="@font/roboto_italic"
                         android:gravity="start"
-                        android:text="Stretches and light work"
+                        android:text="Easy and light work"
                         android:textColor="@color/primary"
                         android:textSize="14sp" />
                 </FrameLayout>
@@ -296,7 +356,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="top|start"
-                        android:layout_marginStart="24dp"
+                        android:layout_marginStart="28dp"
                         android:layout_marginTop="6dp"
                         android:fontFamily="@font/roboto_bold"
                         android:gravity="center"
@@ -356,11 +416,11 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="top|start"
-                        android:layout_marginStart="32dp"
+                        android:layout_marginStart="26dp"
                         android:layout_marginTop="6dp"
                         android:fontFamily="@font/roboto_bold"
                         android:gravity="center"
-                        android:text="Vigorous"
+                        android:text="Advanced"
                         android:textColor="@color/primary"
                         android:textSize="30sp" />
 

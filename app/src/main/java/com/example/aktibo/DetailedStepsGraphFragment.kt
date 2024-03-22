@@ -16,15 +16,18 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AnimationUtils
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.github.mikephil.charting.animation.Easing
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.components.AxisBase
@@ -39,6 +42,7 @@ import com.google.android.gms.fitness.FitnessOptions
 import com.google.android.gms.fitness.data.DataType
 import com.google.android.gms.fitness.data.Field
 import com.google.android.gms.fitness.request.DataReadRequest
+import com.google.android.gms.fitness.result.DataReadResponse
 import com.google.android.material.datepicker.CalendarConstraints
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.firebase.auth.FirebaseAuth
@@ -47,6 +51,11 @@ import com.itextpdf.text.PageSize
 import com.itextpdf.text.pdf.BaseFont
 import com.itextpdf.text.pdf.PdfContentByte
 import com.itextpdf.text.pdf.PdfWriter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.apache.poi.hssf.usermodel.HSSFWorkbook
 import org.apache.poi.ss.usermodel.Cell
 import org.apache.poi.ss.usermodel.Row
@@ -72,8 +81,11 @@ class DetailedStepsGraphFragment : Fragment() {
         .addDataType(DataType.AGGREGATE_ACTIVITY_SUMMARY, FitnessOptions.ACCESS_READ)
         .build()
     private lateinit var barChart: BarChart
+    private lateinit var graphProgressBar: ProgressBar
     private lateinit var datePickerButton: Button
     private lateinit var workbook: Workbook
+
+    private lateinit var backImageButton: ImageButton
 
     var canShowDatePicker = true
     var canShowGenerateReportDialog = true
@@ -83,6 +95,19 @@ class DetailedStepsGraphFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_detailed_steps_graph, container, false)
+
+        // load press animations
+        val fadeIn = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_in)
+        val fadeOut = AnimationUtils.loadAnimation(requireContext(), R.anim.fade_out)
+
+        backImageButton = view.findViewById(R.id.backImageButton)
+        backImageButton.setOnClickListener {
+            backImageButton.startAnimation(fadeOut)
+            parentFragmentManager.popBackStack()
+            backImageButton.startAnimation(fadeIn)
+        }
+
+        graphProgressBar = view.findViewById(R.id.graphProgressBar)
 
         // Set the minimum date to a specific date (e.g., January 1, 2023)
         val minDate = Calendar.getInstance()
@@ -166,7 +191,9 @@ class DetailedStepsGraphFragment : Fragment() {
             endDateCalendar.timeInMillis = endDate
             val realEndDate = helper.endOfDay(endDateCalendar)
 
-            getDailyStepCount(requireContext(), realStartDate.time, realEndDate.time)
+            lifecycleScope.launch {
+                getDailyStepCount(requireContext(), realStartDate.time, realEndDate.time)
+            }
 
             canShowDatePicker = true
         }
@@ -181,18 +208,6 @@ class DetailedStepsGraphFragment : Fragment() {
         // initialize barChart
         barChart = view.findViewById(R.id.barChart)
 
-//        val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
-//
-//        if (!GoogleSignIn.hasPermissions(account, fitnessOptions)) {
-//            GoogleSignIn.requestPermissions(
-//                this, // your activity
-//                819, // e.g. 1
-//                account,
-//                fitnessOptions)
-//        } else {
-//            accessGoogleFit()
-//        }
-
         val generateReportButton = view.findViewById<ImageButton>(R.id.generateReportButton)
         generateReportButton.setOnClickListener{
             if (canShowGenerateReportDialog){
@@ -205,43 +220,35 @@ class DetailedStepsGraphFragment : Fragment() {
         return view
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun accessGoogleFit() {
-        val end = LocalDateTime.now()
-        val start = end.minusYears(1)
-        val endSeconds = end.atZone(ZoneId.systemDefault()).toEpochSecond()
-        val startSeconds = start.atZone(ZoneId.systemDefault()).toEpochSecond()
+    suspend fun getDailyStepCount(context: Context, startDate: Date, endDate: Date) {
+        withContext(Dispatchers.Default){
+            val googleSignInAccount = GoogleSignIn.getAccountForExtension(context, fitnessOptions)
 
-        val readRequest = DataReadRequest.Builder()
-            .aggregate(DataType.AGGREGATE_STEP_COUNT_DELTA)
-            .setTimeRange(startSeconds, endSeconds, TimeUnit.SECONDS)
-            .bucketByTime(1, TimeUnit.DAYS)
-            .build()
-        val account = GoogleSignIn.getAccountForExtension(requireContext(), fitnessOptions)
-        Fitness.getHistoryClient(requireContext(), account)
-            .readData(readRequest)
-            .addOnSuccessListener { response ->
-                // Use response data here
-                Log.i(ContentValues.TAG, "OnSuccess()")
-                // getDailySteps()
+            val readRequest = DataReadRequest.Builder()
+                .aggregate(DataType.TYPE_STEP_COUNT_DELTA)
+                .bucketByTime(1, TimeUnit.DAYS)
+                .setTimeRange(startDate.time, endDate.time, TimeUnit.MILLISECONDS)
+                .build()
+
+            val stepCountsMap = ArrayList<MutableMap<String, Any>>()
+
+            val dataReadResult = Fitness.getHistoryClient(context, googleSignInAccount).readData(readRequest)
+            dataReadResult.addOnSuccessListener { dataReadResponse ->
+                graphProgressBar.visibility = View.VISIBLE
+                lifecycleScope.launch {
+                    processData(dataReadResponse, startDate, endDate, stepCountsMap)
+                }
             }
-            .addOnFailureListener { e -> Log.d(ContentValues.TAG, "OnFailure()", e) }
+        }
     }
 
-    fun getDailyStepCount(context: Context, startDate: Date, endDate: Date) {
-
-        val googleSignInAccount = GoogleSignIn.getAccountForExtension(context, fitnessOptions)
-
-        val readRequest = DataReadRequest.Builder()
-            .aggregate(DataType.TYPE_STEP_COUNT_DELTA)
-            .bucketByTime(1, TimeUnit.DAYS)
-            .setTimeRange(startDate.time, endDate.time, TimeUnit.MILLISECONDS)
-            .build()
-
-        val stepCountsMap = ArrayList<MutableMap<String, Any>>()
-
-        val dataReadResult = Fitness.getHistoryClient(context, googleSignInAccount).readData(readRequest)
-        dataReadResult.addOnSuccessListener { dataReadResponse ->
+    suspend fun processData(
+        dataReadResponse: DataReadResponse,
+        startDate: Date,
+        endDate: Date,
+        stepCountsMap: ArrayList<MutableMap<String, Any>>
+    ){
+        withContext(Dispatchers.Default){
             if (dataReadResponse.buckets.isNotEmpty()) {
                 for (bucket in dataReadResponse.buckets) {
                     for (dataset in bucket.dataSets) {
@@ -250,9 +257,9 @@ class DetailedStepsGraphFragment : Fragment() {
                             val stepCount = dataPoint.getValue(Field.FIELD_STEPS).asInt()
                             val realDate = Date(date)
 
-                            println("*********************************")
-                            println(stepCount)
-                            println(realDate.toString())
+                            // println("*********************************")
+                            // println(stepCount)
+                            // println(realDate.toString())
 
                             var hasRecord = false
                             for (stepsRecord in stepCountsMap){
@@ -312,9 +319,10 @@ class DetailedStepsGraphFragment : Fragment() {
             // sort by date
             stepCountsMap.sortWith(compareBy { it["date"] as Date })
 
-            updateChart(stepCountsMap)
-            createExcel(stepCountsMap)
-
+            withContext(Dispatchers.Main) {
+                updateChart(stepCountsMap)
+                createExcel(stepCountsMap)
+            }
         }
     }
 
@@ -334,90 +342,109 @@ class DetailedStepsGraphFragment : Fragment() {
     }
 
     private fun updateChart(dailyStepCounts: ArrayList<MutableMap<String, Any>>) {
-        val entries = ArrayList<BarEntry>()
+        try {
+            CoroutineScope(IO).launch{
+                withContext(Dispatchers.Main) {
+                    val entries = ArrayList<BarEntry>()
 
-        val stepArray = ArrayList<Int>()
-        val dayArray = ArrayList<String>()
+                    val stepArray = ArrayList<Int>()
+                    val dayArray = ArrayList<String>()
 
-        for (stepsRecord in dailyStepCounts) {
-            val date = stepsRecord["date"] as Date
-            val steps = stepsRecord["steps"] as Int
+                    for (stepsRecord in dailyStepCounts) {
+                        val date = stepsRecord["date"] as Date
+                        val steps = stepsRecord["steps"] as Int
 
-            stepArray.add(steps)
+                        stepArray.add(steps)
 
-            val dateFormat = SimpleDateFormat("MMM-d", Locale.getDefault())
-            val day = dateFormat.format(date).toString()
-            dayArray.add(day)
-        }
+                        val dateFormat = SimpleDateFormat("MMM-d", Locale.getDefault())
+                        val day = dateFormat.format(date).toString()
+                        dayArray.add(day)
+                    }
 
-        // Create data entries for the bar chart from the input data
-        for ((index, value) in stepArray.withIndex()) {
-            entries.add(BarEntry(index.toFloat(), value.toFloat()))
-        }
+                    // Create data entries for the bar chart from the input data
+                    for ((index, value) in stepArray.withIndex()) {
+                        entries.add(BarEntry(index.toFloat(), value.toFloat()))
+                    }
 
-        val set = BarDataSet(entries, "BarDataSet")
-        set.color = Color.rgb(99,169,31)
+                    val set = BarDataSet(entries, "BarDataSet")
+                    set.color = Color.rgb(99,169,31)
 
-        val dataSet = BarData(set)
-        dataSet.barWidth = 0.9f; // set custom bar width
-        dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
+                    val dataSet = BarData(set)
+                    dataSet.barWidth = 0.9f; // set custom bar width
+                    dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
 
-        // disable dragging/zooming
-        // barChart.setTouchEnabled(false)
+                    // disable dragging/zooming
+                    // barChart.setTouchEnabled(false)
 
-        //axis styling
-        val xAxis = barChart.xAxis
-        val yAxisLeft = barChart.axisLeft
-        val yAxisRight = barChart.axisRight
+                    //axis styling
+                    val xAxis = barChart.xAxis
+                    val yAxisLeft = barChart.axisLeft
+                    val yAxisRight = barChart.axisRight
 
-        //disable gridlines
-        xAxis.setDrawGridLines(false)
-        // yAxisLeft.setDrawGridLines(false)
-        yAxisRight.setDrawGridLines(false)
+                    //disable gridlines
+                    xAxis.setDrawGridLines(false)
+                    // yAxisLeft.setDrawGridLines(false)
+                    yAxisRight.setDrawGridLines(false)
 
-        //text color
-        yAxisLeft.textColor = ContextCompat.getColor(requireContext(), R.color.primary)
-        xAxis.textColor = ContextCompat.getColor(requireContext(), R.color.primary)
-        xAxis.position = XAxis.XAxisPosition.BOTTOM
-        yAxisRight.setDrawLabels(false)
+                    //text color
+                    yAxisLeft.textColor = ContextCompat.getColor(requireContext(), R.color.primary)
+                    xAxis.textColor = ContextCompat.getColor(requireContext(), R.color.primary)
+                    xAxis.position = XAxis.XAxisPosition.BOTTOM
+                    yAxisRight.setDrawLabels(false)
 
-        // x-axis values
-        val formatter: ValueFormatter = object : ValueFormatter() {
-            override fun getAxisLabel(value: Float, axis: AxisBase?): String {
-                return dayArray.getOrNull(value.toInt()) ?: value.toString()
+                    // x-axis values
+                    val formatter: ValueFormatter = object : ValueFormatter() {
+                        override fun getAxisLabel(value: Float, axis: AxisBase?): String {
+                            return dayArray.getOrNull(value.toInt()) ?: value.toString()
+                        }
+                    }
+                    xAxis.granularity = 1f
+                    xAxis.valueFormatter = formatter
+
+                    //Disable Legend
+                    val legend = barChart.getLegend()
+                    legend.isEnabled = false
+
+                    //Disable Description
+                    val description = barChart.getDescription()
+                    description.isEnabled = false
+
+                    //Animation
+                    barChart.animateY(500, Easing.EaseInSine);
+                    barChart.animateX(500, Easing.EaseInSine);
+
+                    // setting the data
+                    barChart.data = dataSet
+                    barChart.setFitBars(true)
+
+                    barChart.invalidate()
+
+                    graphProgressBar.visibility = View.GONE
+                }
             }
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Error updating graph", Toast.LENGTH_SHORT).show()
         }
-        xAxis.granularity = 1f
-        xAxis.valueFormatter = formatter
-
-        //Disable Legend
-        val legend = barChart.getLegend()
-        legend.isEnabled = false
-
-        //Disable Description
-        val description = barChart.getDescription()
-        description.isEnabled = false
-
-        //Animation
-        barChart.animateY(500, Easing.EaseInSine);
-        barChart.animateX(500, Easing.EaseInSine);
-
-        // setting the data
-        barChart.data = dataSet
-        barChart.setFitBars(true)
-
-        barChart.invalidate()
     }
 
     private fun createExcel(dailyStepCounts: ArrayList<MutableMap<String, Any>>){
         // Create a new Excel workbook
-        workbook = HSSFWorkbook()
+        workbook = HSSFWorkbook() // uses a global variable, var workbook: Workbook
 
         // Create a sheet in the workbook
         val sheet: Sheet = workbook.createSheet("Sheet1")
 
         var index = 0
 
+        // add column headers
+        val row: Row = sheet.createRow(index)
+        val cell: Cell = row.createCell(0)
+        cell.setCellValue("Date")
+        val cell2: Cell = row.createCell(1)
+        cell2.setCellValue("Steps")
+        index++
+
+        // loop to populate sheet
         for (stepsRecord in dailyStepCounts) {
             val date = stepsRecord["date"] as Date
             val steps = stepsRecord["steps"] as Int
@@ -447,6 +474,7 @@ class DetailedStepsGraphFragment : Fragment() {
         val pdfFilePath = File(externalStorageDir, pdfFileName).toString()
 
         val document = Document(PageSize.LETTER)
+        document.setMargins(72f, 72f, 72f, 72f)
         val pdfWriter = PdfWriter.getInstance(document, FileOutputStream(pdfFilePath))
         document.open()
 
@@ -459,17 +487,73 @@ class DetailedStepsGraphFragment : Fragment() {
             document.newPage()
             contentByte.setFontAndSize(baseFont, 12f)
 
-            for (rowIndex in 0 until sheet.physicalNumberOfRows) {
+            // Track the vertical position on the current page
+            var verticalPosition = document.top()
+            var horizontalPosition = document.left()
+            val lineSpacing = 3
+            val lineHeight = 20
+            val entriesPerColumn = 25
+            val columnsPerPage = 2
+            val columnSpacing = 300f
+
+            var currentColumn = 1
+
+            // show column labels
+            val rowLabels = sheet.getRow(0)
+            for (cellIndex in 0 until rowLabels.physicalNumberOfCells) {
+                val cell = rowLabels.getCell(cellIndex)
+                contentByte.setTextMatrix(cellIndex.toFloat() * 100 + horizontalPosition, verticalPosition)
+                contentByte.showText(cell.toString())
+            }
+            // Update the vertical position for the next row
+            verticalPosition -= (lineSpacing + lineHeight)
+
+            for (rowIndex in 1 until sheet.physicalNumberOfRows) {
                 val row = sheet.getRow(rowIndex)
 
+                // Check if the row will fit on the current page
+                if (rowIndex % entriesPerColumn == 1 && rowIndex != 1) {
+                    currentColumn++
+                    // check if column number has exceeded columns per page
+                    // if not, adjust horizontal position to the next column
+                    if (currentColumn <= columnsPerPage){
+                        horizontalPosition += columnSpacing
+                        verticalPosition = document.top()
+                    } else { // if it has exceeded
+                        // create a new page
+                        document.newPage()
+                        contentByte.setFontAndSize(baseFont, 12f)
+                        verticalPosition = document.top()
+                        horizontalPosition = document.left()
+                        currentColumn = 1
+                    }
+
+                    // show column labels
+                    val rowLabels = sheet.getRow(0)
+                    for (cellIndex in 0 until rowLabels.physicalNumberOfCells) {
+                        val cell = rowLabels.getCell(cellIndex)
+                        contentByte.setTextMatrix(cellIndex.toFloat() * 100 + horizontalPosition, verticalPosition)
+                        contentByte.showText(cell.toString())
+                    }
+
+                    // Update the vertical position for the next row
+                    verticalPosition -= (lineSpacing + lineHeight)
+                    println("vertical position: $verticalPosition")
+                }
+
+                // show cell item
                 for (cellIndex in 0 until row.physicalNumberOfCells) {
                     val cell = row.getCell(cellIndex)
 
-                    // Adjust x, y coordinates and other parameters as needed
-                    contentByte.setTextMatrix(cellIndex.toFloat() * 100, document.top() - rowIndex * 20)
+                    contentByte.setTextMatrix(cellIndex.toFloat() * 100 + horizontalPosition, verticalPosition)
                     contentByte.showText(cell.toString())
                 }
+
+                // Update the vertical position for the next row
+                verticalPosition -= (lineSpacing + lineHeight)
+                println("vertical position: $verticalPosition")
             }
+
         }
 
         document.close()
@@ -524,6 +608,7 @@ class DetailedStepsGraphFragment : Fragment() {
             builder.setItems(options) { _, which ->
                 when (which) {
                     0 -> {
+                        Toast.makeText(requireContext(), "Generating Excel file", Toast.LENGTH_SHORT).show()
                         val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
                         val currentDateAndTime = dateFormat.format(Date())
                         val fileName = "aktibo-steps_$currentDateAndTime.xls"
@@ -552,6 +637,7 @@ class DetailedStepsGraphFragment : Fragment() {
                         }
                     }
                     1 -> {
+                        Toast.makeText(requireContext(), "Generating PDF file", Toast.LENGTH_SHORT).show()
                         val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
                         val currentDateAndTime = dateFormat.format(Date())
                         val pdfFileName = "aktibo-steps_$currentDateAndTime.pdf"
