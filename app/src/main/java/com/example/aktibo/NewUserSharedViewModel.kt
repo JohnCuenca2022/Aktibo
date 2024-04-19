@@ -8,4 +8,5 @@ class NewUserSharedViewModel : ViewModel() {
     var weightGoal: Int = 0
     var targetWeight: String = ""
     var exerciseGoal: Int = 0
+    var physicalActivityLevel: Int = 0
 }

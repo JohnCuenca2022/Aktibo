@@ -13,14 +13,20 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import java.util.Calendar
 
 
@@ -85,12 +91,47 @@ class MainActivity : AppCompatActivity() {
                 R.id.food -> replaceFragment(FoodFragment())
                 R.id.exercise -> replaceFragment(ExerciseFragment())
                 R.id.moments -> {
-                    // Check if the dialog should be shown
-                    if (shouldShowDialog()) {
-                        replaceFragment(TermsOfServiceFragment())
-                    } else {
-                        replaceFragment(MomentsFragment())
+                    // Check if user is restricted
+                    val currentUser = FirebaseAuth.getInstance().currentUser
+                    val userID = currentUser?.uid
+                    val db = Firebase.firestore
+                    val docRef = userID?.let { db.collection("users").document(it) }
+                    if (docRef != null) {
+                        docRef.get()
+                            .addOnSuccessListener { document ->
+                                if (document != null) {
+                                    var reportsCount = document.getDouble("reportsCount") ?: 0
+                                    reportsCount = reportsCount.toInt()
+
+                                    if (reportsCount >= 3){
+                                        val builder = AlertDialog.Builder(this)
+                                        builder.setTitle("Feature Restricted")
+                                        builder.setMessage(R.string.banned_message)
+                                        builder.setPositiveButton("I understand") { dialog, which ->
+
+                                        }
+                                        val dialog = builder.create()
+                                        dialog.show()
+                                    } else {
+                                        // Check if the dialog should be shown
+                                        if (shouldShowDialog()) {
+                                            replaceFragment(TermsOfServiceFragment())
+                                        } else {
+                                            replaceFragment(MomentsFragment())
+                                        }
+                                    }
+                                }
+                            }
+                            .addOnFailureListener {
+                                // Check if the dialog should be shown
+                                if (shouldShowDialog()) {
+                                    replaceFragment(TermsOfServiceFragment())
+                                } else {
+                                    replaceFragment(MomentsFragment())
+                                }
+                            }
                     }
+
                 }
                 R.id.notifications -> replaceFragment(NotificationsFragment())
             }

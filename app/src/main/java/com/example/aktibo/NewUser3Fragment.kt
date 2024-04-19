@@ -115,7 +115,7 @@ class NewUser3Fragment : Fragment() {
                         Toast.makeText(context, "Target weight must be less than current weight to achieve your weight goal", Toast.LENGTH_SHORT).show()
                     } else {
                         sharedViewModel.targetWeight = targetWeight.toString()
-                        println(targetWeight.toString())
+//                        println(targetWeight.toString())
                         val fragmentManager = getParentFragmentManager()
                         val transaction = fragmentManager.beginTransaction()
                         transaction.setCustomAnimations(

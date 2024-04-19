@@ -136,12 +136,12 @@ class WeightGoalFragment : Fragment() {
 
                         for (record in weightRecords){
                             val date = record["date"] as Timestamp
-                            val weightInKg = record["weight"] as Double
+                            val weightInKg = record["weight"].toString()
 
-                            val weightInLbs = convertKgToLbs(weightInKg)
+                            val weightInLbs = convertKgToLbs(weightInKg.toDouble())
 
                             val dateString = formatDateToString(date.toDate())
-                            val weightString = "${formatDouble(weightInKg)}kg / ${formatDouble(weightInLbs)}lbs"
+                            val weightString = "${formatDouble(weightInKg.toDouble())}kg / ${formatDouble(weightInLbs)}lbs"
 
                             val tableRow = recordInflater.inflate(R.layout.weight_record_tablerow_layout, null)
 

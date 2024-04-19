@@ -74,10 +74,16 @@
                     app:layout_constraintStart_toStartOf="@+id/progressBarCalories"
                     app:layout_constraintTop_toTopOf="@+id/progressBarCalories" />
 
-                <ImageView
+                <TextView
+                    android:id="@+id/textViewCaloriesMax"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:src="@drawable/food_icon"
+                    android:gravity="center"
+                    android:text="/0"
+                    android:textColor="@color/primary"
+                    android:textSize="14sp"
+                    android:alpha="0.8"
+                    android:fontFamily="@font/roboto"
                     app:layout_constraintBottom_toBottomOf="@+id/progressBarCalories"
                     app:layout_constraintEnd_toEndOf="@+id/progressBarCalories"
                     app:layout_constraintHorizontal_bias="0.503"
@@ -139,6 +145,22 @@
                         app:layout_constraintTop_toTopOf="@+id/progressBarCarbs" />
 
                     <TextView
+                        android:id="@+id/textViewCarbsMax"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="/0"
+                        android:textColor="@color/primary"
+                        android:textSize="14sp"
+                        android:alpha="0.8"
+                        android:fontFamily="@font/roboto"
+                        app:layout_constraintVertical_bias="0.2"
+                        app:layout_constraintBottom_toBottomOf="@+id/progressBarCarbs"
+                        app:layout_constraintEnd_toEndOf="@+id/textViewCarbsCount"
+                        app:layout_constraintStart_toStartOf="@+id/textViewCarbsCount"
+                        app:layout_constraintTop_toBottomOf="@+id/textViewCarbsCount" />
+
+                    <TextView
                         android:id="@+id/textViewCarbs"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -184,6 +206,22 @@
                         app:layout_constraintTop_toTopOf="@+id/progressBarProtein" />
 
                     <TextView
+                        android:id="@+id/textViewProteinMax"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="/0"
+                        android:textColor="@color/primary"
+                        android:textSize="14sp"
+                        android:alpha="0.8"
+                        android:fontFamily="@font/roboto"
+                        app:layout_constraintVertical_bias="0.2"
+                        app:layout_constraintBottom_toBottomOf="@+id/progressBarProtein"
+                        app:layout_constraintEnd_toEndOf="@+id/textViewProteinCount"
+                        app:layout_constraintStart_toStartOf="@+id/textViewProteinCount"
+                        app:layout_constraintTop_toBottomOf="@+id/textViewProteinCount" />
+
+                    <TextView
                         android:id="@+id/textViewProtein"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -227,6 +265,22 @@
                         app:layout_constraintEnd_toEndOf="@+id/progressBarFat"
                         app:layout_constraintStart_toStartOf="@+id/progressBarFat"
                         app:layout_constraintTop_toTopOf="@+id/progressBarFat" />
+
+                    <TextView
+                        android:id="@+id/textViewFatMax"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="/0"
+                        android:textColor="@color/primary"
+                        android:textSize="14sp"
+                        android:alpha="0.8"
+                        android:fontFamily="@font/roboto"
+                        app:layout_constraintVertical_bias="0.2"
+                        app:layout_constraintBottom_toBottomOf="@+id/progressBarFat"
+                        app:layout_constraintEnd_toEndOf="@+id/textViewFatCount"
+                        app:layout_constraintStart_toStartOf="@+id/textViewFatCount"
+                        app:layout_constraintTop_toBottomOf="@+id/textViewFatCount" />
 
                     <TextView
                         android:id="@+id/textViewFat"

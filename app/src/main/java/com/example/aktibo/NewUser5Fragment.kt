@@ -15,7 +15,7 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
-class NewUser4Fragment : Fragment() {
+class NewUser5Fragment : Fragment() {
 
     private lateinit var sharedViewModel: NewUserSharedViewModel
 
@@ -30,41 +30,37 @@ class NewUser4Fragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         // Inflate the layout for this fragment
-        val view = inflater.inflate(R.layout.fragment_new_user4, container, false)
+        val view = inflater.inflate(R.layout.fragment_new_user5, container, false)
 
-        val button_12days: Button = view.findViewById(R.id.button_12days)
-        button_12days.setOnClickListener{
-            sharedViewModel.exerciseGoal = 1
-            goToNext()
+        val sedentary: Button = view.findViewById(R.id.button_sedentary)
+        sedentary.setOnClickListener{
+            sharedViewModel.physicalActivityLevel = 0
+            Toast.makeText(context, "Creating your account", Toast.LENGTH_SHORT).show()
+            checkAndCreateUserDocument()
         }
 
-        val button_34days: Button = view.findViewById(R.id.button_34days)
-        button_34days.setOnClickListener{
-            sharedViewModel.exerciseGoal = 2
-            goToNext()
+        val light: Button = view.findViewById(R.id.button_light)
+        light.setOnClickListener{
+            sharedViewModel.physicalActivityLevel = 1
+            Toast.makeText(context, "Creating your account", Toast.LENGTH_SHORT).show()
+            checkAndCreateUserDocument()
         }
 
-        val button_5days: Button = view.findViewById(R.id.button_5days)
-        button_5days.setOnClickListener{
-            sharedViewModel.exerciseGoal = 3
-            goToNext()
+        val moderate: Button = view.findViewById(R.id.button_moderate)
+        moderate.setOnClickListener{
+            sharedViewModel.physicalActivityLevel = 2
+            Toast.makeText(context, "Creating your account", Toast.LENGTH_SHORT).show()
+            checkAndCreateUserDocument()
+        }
+
+        val active: Button = view.findViewById(R.id.button_active)
+        active.setOnClickListener{
+            sharedViewModel.physicalActivityLevel = 3
+            Toast.makeText(context, "Creating your account", Toast.LENGTH_SHORT).show()
+            checkAndCreateUserDocument()
         }
 
         return view
-    }
-
-    private fun goToNext(){
-        val fragmentManager = getParentFragmentManager()
-        val transaction = fragmentManager.beginTransaction()
-        transaction.setCustomAnimations(
-            R.anim.slide_in_right, // Enter animation
-            R.anim.slide_out_left, // Exit animation
-            R.anim.slide_in_left, // Pop enter animation (for back navigation)
-            R.anim.slide_out_right // Pop exit animation (for back navigation)
-        )
-        transaction.replace(R.id.fragment_container_new_user, NewUser5Fragment())
-        transaction.addToBackStack(null)
-        transaction.commit()
     }
 
     private fun checkAndCreateUserDocument() {
@@ -120,6 +116,7 @@ class NewUser4Fragment : Fragment() {
                             data["targetWeight"] = sharedViewModel.targetWeight.toDouble()
                             data["weightGoal"] = sharedViewModel.weightGoal
                             data["exerciseGoal"] = sharedViewModel.exerciseGoal
+                            data["physicalActivityLevel"] = sharedViewModel.physicalActivityLevel
 
                             // Create the document
                             usersCollection.document(userId).set(data)

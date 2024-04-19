@@ -31,5 +31,7 @@ day for males kcals in a week. \n\nThese weekly goals may vary for each individu
     <string name="CreditsText4">To the testers who have provided insightful\nfeedback that can be used for the\nbetterment of this project.</string>
     <string name="CreditsText5">And to the family, friends, and acquaintances\nwho have provided generous support\nand approval in reaching our goals.</string>
     <string name="CreditsText6">FreeImages.com · Unsplash.com · Pexels.com\nIStockPhoto.com · ShutterStock.com\nGettyImages.com · Dreamstime.com\nAdobeStock · Freepik.com</string>
+    <string name="acknowledgement">I understand</string>
+    <string name="banned_message">Your account has been restricted from accessing the Moments feature. Please contact us at aktibo.help@gmail.com for appeals.</string>
 
 </resources>

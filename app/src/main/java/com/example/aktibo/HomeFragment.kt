@@ -220,6 +220,9 @@ class HomeFragment : Fragment() {
         // Other Notifs
         sendMotivationalNotif()
 
+        // user info
+        setLastLoggedInDate()
+
         return view
     }
 
@@ -1054,7 +1057,7 @@ class HomeFragment : Fragment() {
                                 var hasDataPoint = false
                                 for (map in weightRecords) {
                                     val mapTimestamp = map["date"] as Timestamp
-                                    val weight = map["weight"].toString().toDouble() as Double
+                                    val weight = map["weight"].toString().toDouble()
                                     val mapDate = sdf.format(mapTimestamp.toDate())
                                     if (mapDate == dayString) {
                                         dataList.add(weight)
@@ -1236,4 +1239,20 @@ class HomeFragment : Fragment() {
             }
     }
 
+    private fun setLastLoggedInDate(){
+        val auth = FirebaseAuth.getInstance()
+        val currentUser = auth.currentUser
+        val uid = currentUser?.uid
+
+        val db = FirebaseFirestore.getInstance()
+        val documentReference = db.collection("users").document(uid.toString())
+
+        documentReference.update("lastLoggedInTimestamp", Timestamp.now())
+            .addOnSuccessListener {
+                Log.d(LoginActivity.TAG, "DocumentSnapshot successfully updated!")
+            }
+            .addOnFailureListener { e ->
+                Log.w(LoginActivity.TAG, "Error updating document", e)
+            }
+    }
 }

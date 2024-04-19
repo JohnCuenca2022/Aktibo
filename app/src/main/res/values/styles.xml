@@ -82,6 +82,7 @@
         <item name="colorSurface">@color/secondary</item>
         <item name="colorOnSurface">@color/secondary</item>
         <item name="materialAlertDialogTitleTextStyle">@style/MaterialAlertDialog.App.Title.Text</item>
+        <item name="android:dialogMessage">@style/MaterialAlertDialog.App.Title.Text</item>
     </style>
 
     <style name="MaterialAlertDialog.App.Title.Text" parent="MaterialAlertDialog.MaterialComponents.Title.Text">

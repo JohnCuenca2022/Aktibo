@@ -188,6 +188,18 @@
                     app:layout_constraintTop_toBottomOf="@+id/textViewSettings3"
                     app:textAllCaps="false" />
 
+                <TextView
+                    android:id="@+id/contact"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10sp"
+                    app:layout_constraintTop_toBottomOf="@+id/button_credits"
+                    android:fontFamily="@font/roboto"
+                    android:textColor="@color/primary"
+                    android:textAlignment="center"
+
+                    android:text="Got a Question? Email us at\naktibo.help@gmail.com\naktibo-support@ust.edu.ph"/>
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/button_logout"
                     android:layout_width="300dp"
@@ -201,7 +213,7 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintHorizontal_bias="0.498"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toBottomOf="@+id/button_credits"
+                    app:layout_constraintTop_toBottomOf="@+id/contact"
                     style="@style/CustomMaterialButton"
                     app:textAllCaps="false" />
 
