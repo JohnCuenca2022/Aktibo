@@ -37,7 +37,9 @@ class NotificationsFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_notifications, container, false)
+        val view = inflater.inflate(R.layout.fragment_notifications, container, false)
+
+        return view
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -57,10 +59,10 @@ class NotificationsFragment : Fragment() {
         }
 
         val user = Firebase.auth.currentUser
-        if (user == null) {
-            val intent = Intent(activity, LoginActivity::class.java)
-            startActivity(intent)
-        }
+//        if (user == null) {
+//            val intent = Intent(activity, LoginActivity::class.java)
+//            startActivity(intent)
+//        }
 
         user?.let {
             val uid = it.uid

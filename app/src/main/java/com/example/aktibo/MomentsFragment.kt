@@ -83,7 +83,6 @@ class MomentsFragment : Fragment() {
             }
         }.attach()
 
-        resetPreferences()
     }
 
     private fun replaceFragmentWithAnim(fragment: Fragment) {

@@ -218,9 +218,11 @@ class FoodFragment : Fragment() {
             }
         }
         progressBarCaloriesMax = totalEnergyRequirement.toInt()
-        AnimationUtil.animateTextViewMacrosMax(textViewCaloriesMax, 0, totalEnergyRequirement.toInt(), 1000)
 
-        val weightGoal = document.getDouble("weightGoal")?.toInt() ?: 0
+
+        var weightGoal = document.getDouble("weightGoal") ?: 0
+        weightGoal = weightGoal.toInt()
+        println("weightGoal: " + weightGoal)
         when (weightGoal) {
             0 -> {
                 progressBarCaloriesMax = totalEnergyRequirement.toInt()
@@ -233,13 +235,15 @@ class FoodFragment : Fragment() {
             }
         }
 
-        progressBarCarbsMax = ((totalEnergyRequirement*0.60)/4).toInt()
+        AnimationUtil.animateTextViewMacrosMax(textViewCaloriesMax, 0, progressBarCaloriesMax, 1000)
+
+        progressBarCarbsMax = ((progressBarCaloriesMax*0.60)/4).toInt()
         AnimationUtil.animateTextViewMacrosMax(textViewCarbsMax, 0, progressBarCarbsMax, 1000)
 
-        progressBarProteinMax = ((totalEnergyRequirement*0.15)/4).toInt()
+        progressBarProteinMax = ((progressBarCaloriesMax*0.15)/4).toInt()
         AnimationUtil.animateTextViewMacrosMax(textViewProteinMax, 0, progressBarProteinMax, 1000)
 
-        progressBarFatMax = ((totalEnergyRequirement*0.25)/4).toInt()
+        progressBarFatMax = ((progressBarCaloriesMax*0.25)/4).toInt()
         AnimationUtil.animateTextViewMacrosMax(textViewFatMax, 0, progressBarFatMax, 1000)
 
         setMaxValues()

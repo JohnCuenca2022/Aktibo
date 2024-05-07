@@ -49,7 +49,7 @@ class MyPostsFragment : Fragment() {
     val query = momentsRef
         // don't show moments(posts) with more than 5 reports
         //.whereLessThan("reportsCount", 5)
-        .whereEqualTo("userID", "0y9Kkgd303QrsKSuXzKvqG2DI4E2")
+        .whereEqualTo("userID", userID)
         .orderBy("reportsCount", Query.Direction.ASCENDING)
         .orderBy("datePosted", Query.Direction.DESCENDING)
 
@@ -62,7 +62,7 @@ class MyPostsFragment : Fragment() {
         // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_my_posts, container, false)
 
-        println("USERID: " + userID)
+        //println("USERID: " + userID)
 
         scrollView = view.findViewById(R.id.scrollView)
         linearLayout = view.findViewById(R.id.scrollContainer)
@@ -185,6 +185,11 @@ class MyPostsFragment : Fragment() {
             val reports = data.get("reports") as? ArrayList<Map<Any, Any>> ?: ArrayList()
             val usersLiked = data.get("usersLiked") as? List<String>
             val usersDisliked = data.get("usersDisliked") as? List<String>
+            val isDeleted = data.getBoolean("isDeleted") ?: false
+
+            if (isDeleted){
+                continue
+            }
 
             println(data.toString())
 
@@ -428,7 +433,7 @@ class MyPostsFragment : Fragment() {
 
     private fun deletePost(momentID: String){
         db.collection("moments").document(momentID)
-            .delete()
+            .update("isDeleted", true)
             .addOnSuccessListener { Toast.makeText(context, "Post successfully deleted", Toast.LENGTH_SHORT).show() }
             .addOnFailureListener { Toast.makeText(context, "Delete failed. Please try again later.", Toast.LENGTH_SHORT).show() }
     }

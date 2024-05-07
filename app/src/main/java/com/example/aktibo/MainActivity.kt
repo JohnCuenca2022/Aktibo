@@ -18,6 +18,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.view.forEach
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -37,6 +38,7 @@ class MainActivity : AppCompatActivity() {
 
     private val PREFS_NAME = "MyPrefsFile"
     private val PREF_KEY_SHOW_DIALOG = "showDialog"
+    private val PREF_KEY_SHOW_DATA_PRIVACY_DIALOG = "showDataPrivacyDialog"
 
     val authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth: FirebaseAuth ->
         val user: FirebaseUser? = firebaseAuth.currentUser
@@ -87,10 +89,11 @@ class MainActivity : AppCompatActivity() {
         bottomNavigation = findViewById(R.id.bottom_navigation)
         bottomNavigation.setOnItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
-                R.id.home -> replaceFragment(HomeFragment())
-                R.id.food -> replaceFragment(FoodFragment())
-                R.id.exercise -> replaceFragment(ExerciseFragment())
-                R.id.moments -> {
+                R.id.menu_home -> replaceFragment(HomeFragment())
+                R.id.menu_food -> replaceFragment(FoodFragment())
+                R.id.menu_exercise -> replaceFragment(ExerciseFragment())
+                R.id.menu_moments -> {
+                    //replaceFragment(MomentsFragment())
                     // Check if user is restricted
                     val currentUser = FirebaseAuth.getInstance().currentUser
                     val userID = currentUser?.uid
@@ -133,23 +136,30 @@ class MainActivity : AppCompatActivity() {
                     }
 
                 }
-                R.id.notifications -> replaceFragment(NotificationsFragment())
+                R.id.menu_notifications -> replaceFragment(NotificationsFragment())
             }
             true
         }
-
         // Set the default fragment
-        bottomNavigation.selectedItemId = R.id.home
+        //shouldShowDataPrivacyDialog()
+        if(shouldShowDataPrivacyDialog()){
+            bottomNavigation.menu.forEach { it.isEnabled = false }
+            replaceFragment(DataPrivacyFragment())
+        } else {
+            bottomNavigation.menu.forEach { it.isEnabled = true }
+            bottomNavigation.selectedItemId = R.id.menu_home
+        }
+
 
     }
 
     fun navigationInterface(navItem: Int){
         when (navItem) {
-            1 -> bottomNavigation.selectedItemId = R.id.home
-            2 -> bottomNavigation.selectedItemId = R.id.food
-            3 -> bottomNavigation.selectedItemId = R.id.exercise
-            4 -> bottomNavigation.selectedItemId = R.id.moments
-            5 -> bottomNavigation.selectedItemId = R.id.notifications
+            1 -> bottomNavigation.selectedItemId = R.id.menu_home
+            2 -> bottomNavigation.selectedItemId = R.id.menu_food
+            3 -> bottomNavigation.selectedItemId = R.id.menu_exercise
+            4 -> bottomNavigation.selectedItemId = R.id.menu_moments
+            5 -> bottomNavigation.selectedItemId = R.id.menu_notifications
         }
     }
 
@@ -173,7 +183,7 @@ class MainActivity : AppCompatActivity() {
             currentFragment is NotificationsFragment) {
 
             replaceFragment(HomeFragment())
-            bottomNavigation.selectedItemId = R.id.home
+            bottomNavigation.selectedItemId = R.id.menu_home
 
             return
         }
@@ -207,6 +217,11 @@ class MainActivity : AppCompatActivity() {
         val editor = prefs.edit()
         editor.clear() // This will remove all preferences
         editor.apply()
+    }
+
+    private fun shouldShowDataPrivacyDialog(): Boolean {
+        val prefs: SharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(PREF_KEY_SHOW_DATA_PRIVACY_DIALOG, true)
     }
 
 }

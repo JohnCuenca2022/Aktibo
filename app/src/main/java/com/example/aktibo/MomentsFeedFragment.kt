@@ -38,7 +38,10 @@ class MomentsFeedFragment : Fragment() {
     private lateinit var progressBar: ProgressBar
 
     var canLoadMoreMoments = true
+    var canShowMoments = true
     var canShowEndOfMomentsMessage = true
+
+    private lateinit var inflater: LayoutInflater
 
     val db = Firebase.firestore
     val momentsRef = db.collection("moments")
@@ -51,16 +54,31 @@ class MomentsFeedFragment : Fragment() {
 
     private lateinit var lastVisible: DocumentSnapshot
 
+    private lateinit var marginLayoutParams: LinearLayout.LayoutParams
+
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
+        inflater2: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         // Inflate the layout for this fragment
-        val view = inflater.inflate(R.layout.fragment_moments_feed, container, false)
+        val view = inflater2.inflate(R.layout.fragment_moments_feed, container, false)
 
         scrollView = view.findViewById(R.id.scrollView)
         linearLayout = view.findViewById(R.id.scrollContainer)
         progressBar = view.findViewById(R.id.progressBar)
+
+        inflater = layoutInflater
+
+        marginLayoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        marginLayoutParams.setMargins(
+            0,
+            0,
+            0,
+            resources.getDimensionPixelSize(R.dimen.bottom_margin)
+        )
 
         return view
     }
@@ -130,6 +148,7 @@ class MomentsFeedFragment : Fragment() {
 
         val query = query
             .startAfter(lastVisible)
+            .limit(5)
 
         query.get()
             .addOnSuccessListener { documentSnapshots ->
@@ -157,10 +176,14 @@ class MomentsFeedFragment : Fragment() {
     }
 
     private fun showMoments(documentSnapshots: QuerySnapshot){
+        if (!canShowMoments){
+            return
+        }
+
         val currentUser = FirebaseAuth.getInstance().currentUser
         val userID = currentUser?.uid
 
-        val inflater = layoutInflater
+        canShowMoments = false
 
         for (data in documentSnapshots){
             val id = data.id
@@ -173,6 +196,11 @@ class MomentsFeedFragment : Fragment() {
             val reports = data.get("reports") as? ArrayList<Map<Any, Any>> ?: ArrayList()
             val usersLiked = data.get("usersLiked") as? List<String>
             val usersDisliked = data.get("usersDisliked") as? List<String>
+            val isDeleted = data.getBoolean("isDeleted") ?: false
+
+            if (isDeleted){
+                continue
+            }
 
             var skip = false
             for (reportData in reports){
@@ -190,16 +218,7 @@ class MomentsFeedFragment : Fragment() {
 
             itemLayout.setTag(id)
 
-            val marginLayoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            marginLayoutParams.setMargins(
-                0,
-                0,
-                0,
-                resources.getDimensionPixelSize(R.dimen.bottom_margin)
-            ) // Adjust the margin as needed
+             // Adjust the margin as needed
             itemLayout.layoutParams = marginLayoutParams
 
             val userProfileImage = itemLayout.findViewById<ImageView>(R.id.userProfileImage)
@@ -280,6 +299,8 @@ class MomentsFeedFragment : Fragment() {
 
             linearLayout.addView(itemLayout)
         }
+
+        canShowMoments = true
     }
 
     private fun interactWithLike(momentDocID: String, userID:String, likesCount: TextView, likeButton: ImageView, otherButton: ImageView){

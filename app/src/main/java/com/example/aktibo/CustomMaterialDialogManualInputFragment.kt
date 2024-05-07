@@ -9,7 +9,6 @@ import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.Toast
@@ -29,7 +28,7 @@ import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-class CustomMaterialDialogFragment : DialogFragment() {
+class CustomMaterialDialogManualInputFragment : DialogFragment() {
 
     val PICK_IMAGE_REQUEST = 1
     val CAMERA_REQUEST = 2
@@ -39,40 +38,52 @@ class CustomMaterialDialogFragment : DialogFragment() {
     // TensorFlow
     val imageSize = 256
 
+    var canSaveFoodRecord = true
+
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val builder = MaterialAlertDialogBuilder(requireContext())
         val inflater = LayoutInflater.from(requireContext())
-        val view = inflater.inflate(R.layout.custom_material_dialog_layout, null)
+        val view = inflater.inflate(R.layout.custom_material_dialog_manual_input_layout, null)
 
         val closeButton = view.findViewById<View>(R.id.closeButton)
-        val editText = view.findViewById<TextInputEditText>(R.id.editText)
-        val button_capture = view.findViewById<View>(R.id.button_capture)
-        val button_manual = view.findViewById<View>(R.id.button_manual)
         val button_confirm = view.findViewById<View>(R.id.button_confirm)
 
         closeButton.setOnClickListener {
             dismiss()
         }
 
-        button_capture.setOnClickListener() {
-            selectImage()
-        }
-
-        button_manual.setOnClickListener {
-            manualInput()
-            dismiss()
-        }
-
-
+        val foodName = view.findViewById<TextInputEditText>(R.id.foodName)
+        val calories = view.findViewById<TextInputEditText>(R.id.calories)
+        val carbs = view.findViewById<TextInputEditText>(R.id.carbs)
+        val protein = view.findViewById<TextInputEditText>(R.id.protein)
+        val fat = view.findViewById<TextInputEditText>(R.id.fat)
 
         button_confirm.setOnClickListener {
-            val foodDescription = editText.text.toString().trim()
-            if (foodDescription == ""){
-                Toast.makeText(context, "Input a food description or upload a picture", Toast.LENGTH_SHORT).show();
-            } else if (foodDescription.length < 2){
-                Toast.makeText(context, "Food description must have at least 2 characters", Toast.LENGTH_SHORT).show();
+            val foodNameInput = foodName.text.toString()
+            val caloriesInput = calories.text.toString()
+            val carbsInput = carbs.text.toString()
+            val proteinInput = protein.text.toString()
+            val fatInput = fat.text.toString()
+            if (foodNameInput == ""){
+                Toast.makeText(context, "PLease input a food name", Toast.LENGTH_SHORT).show();
+            } else if (foodNameInput.length < 2){
+                Toast.makeText(context, "Food name must have at least 2 characters", Toast.LENGTH_SHORT).show();
+            } else if (caloriesInput == ""){
+                Toast.makeText(context, "Please input calories", Toast.LENGTH_SHORT).show();
+            } else if (carbsInput == ""){
+                Toast.makeText(context, "Please input carbs", Toast.LENGTH_SHORT).show();
+            } else if (proteinInput == ""){
+                Toast.makeText(context, "Please input protein", Toast.LENGTH_SHORT).show();
+            } else if (fatInput == ""){
+                Toast.makeText(context, "Please input fat", Toast.LENGTH_SHORT).show();
             } else {
-                replaceFragmentWithAnimAndData(foodDescription)
+                saveFoodRecord(
+                    foodNameInput,
+                    1.0,
+                    caloriesInput.toDouble(),
+                    carbsInput.toDouble(),
+                    proteinInput.toDouble(),
+                    fatInput.toDouble())
                 dismiss()
             }
         }
@@ -82,11 +93,49 @@ class CustomMaterialDialogFragment : DialogFragment() {
         return builder.create()
     }
 
-    private fun manualInput() {
-        val supportFragmentManager = parentFragmentManager
-        val customDialog = CustomMaterialDialogManualInputFragment()
-        customDialog.show(supportFragmentManager, "CustomMaterialDialogManualInputFragment")
+    private fun saveFoodRecord(foodLabel: String, quantity: Double, calories: Double, carbohydrates: Double, protein: Double, fat: Double){
+        if (!canSaveFoodRecord){
+            return
+        }
+
+        canSaveFoodRecord = false
+
+        // User confirmed, execute the action
+        val user = Firebase.auth.currentUser
+        user?.let {
+            val uid = it.uid
+            val db = Firebase.firestore
+
+            val mealRecord = mapOf(
+                "date" to Timestamp.now(),
+                "foodLabel" to foodLabel,
+                "quantity" to quantity,
+                "calories" to roundToTwoDecimalPlaces(calories),
+                "carbohydrates" to roundToTwoDecimalPlaces(carbohydrates),
+                "protein" to roundToTwoDecimalPlaces(protein),
+                "fat" to roundToTwoDecimalPlaces(fat)
+            )
+
+            val userRef = db.collection("users").document(uid)
+            userRef
+                .update("mealRecords", FieldValue.arrayUnion(mealRecord))
+                .addOnSuccessListener {
+                    //Toast.makeText(context, "Meal Recorded", Toast.LENGTH_SHORT).show()
+                }
+                .addOnFailureListener {
+                    //Toast.makeText(context, "Failed to record meal", Toast.LENGTH_SHORT).show()
+                }
+        }
+        dialog?.dismiss()
+        canSaveFoodRecord = true
+
     }
+
+    fun roundToTwoDecimalPlaces(number: Double): Double {
+        return "%.${2}f".format(number).toDouble()
+    }
+
+
     fun selectImage() {
         val options = arrayOf("Select from Gallery", "Take a Photo")
         val builder = AlertDialog.Builder(requireContext())
