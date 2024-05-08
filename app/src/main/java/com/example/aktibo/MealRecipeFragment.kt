@@ -71,7 +71,8 @@ import kotlin.time.Duration.Companion.seconds
 
 class MealRecipeFragment : Fragment() {
 
-    private var openAI_API_KEY = "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"
+    // jakewumbo acc
+    private var openAI_API_KEY = "sk-proj-er5ZvDChun1D8sxW2ibIT3BlbkFJMLiMvh3hNQDr31fNX9JT"
     private var openAI_Assistant_ID = "asst_hoMTFS1Qdw4ZLhEZLKYTQRfR"
 
     private lateinit var textViewCalories: TextView
